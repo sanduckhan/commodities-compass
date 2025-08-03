@@ -25,7 +25,8 @@ class Technicals(Base):
     Technical analysis data for commodities trading.
 
     This table stores raw OHLCV data along with calculated technical indicators
-    for each time period. Contains 208 historical records with 46 indicators.
+    for each time period. Currently focused on cocoa (ICE contracts) with daily frequency.
+    Data updated daily via Make.com automation at 8:30 PM.
 
     Source: TECHNICALS sheet from Excel file
     """
@@ -38,7 +39,16 @@ class Technicals(Base):
         TIMESTAMP,
         nullable=False,
         index=True,
-        comment="Date and time of the trading period",
+        comment="Date and time of the trading period (daily frequency)",
+    )
+
+    # Commodity identifier
+    commodity_symbol: Mapped[str] = mapped_column(
+        VARCHAR(10),
+        nullable=False,
+        default="CC",
+        index=True,
+        comment="Commodity symbol (CC for Cocoa, expandable for other commodities)",
     )
 
     # === CORE OHLCV DATA ===
@@ -75,11 +85,11 @@ class Technicals(Base):
     )
     stock_us: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(15, 6),
-        comment="US stock market correlation factor (needs clarification)",
+        comment="US stock values regulated by ICE, available daily online, expressed in bags (x70/1000 to convert to kgs)",
     )
     com_net_us: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(15, 6),
-        comment="Commercial net position in US market (COT report data?)",
+        comment="Net commercial positions from COT (Commitments of Traders) report - commercial long minus short positions",
     )
 
     # === PIVOT POINTS ===
@@ -144,17 +154,15 @@ class Technicals(Base):
     stochastic_d_14: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(15, 6), comment="14-period Stochastic %D - slow stochastic (SMA of %K)"
     )
-    d: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(15, 6),
-        comment="Additional %D value - might be different period than stochastic_d_14",
-    )
+    # Note: Removed duplicate 'd' field - expert confirmed it's the same as stochastic_d_14
 
     # === VOLATILITY MEASURES ===
     atr: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(15, 6), comment="Average True Range - measures market volatility"
+        DECIMAL(15, 6), comment="Average True Range - different period than ATR 14d"
     )
     atr_14d: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(15, 6), comment="14-day Average True Range"
+        DECIMAL(15, 6),
+        comment="14-day Average True Range - calculated from formulas, converted to numerical",
     )
     volatility: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(15, 6),
@@ -180,7 +188,7 @@ class Technicals(Base):
     bollinger_width: Mapped[Decimal] = mapped_column(
         DECIMAL(15, 6),
         nullable=False,
-        comment="Bollinger Band width - difference between upper and lower bands",
+        comment="Bollinger Band width (limites de bolinger) - difference between upper and lower bands",
     )
 
     # === CALCULATED RATIOS & RELATIONSHIPS ===
@@ -191,15 +199,17 @@ class Technicals(Base):
     volume_oi_ratio: Mapped[Decimal] = mapped_column(
         DECIMAL(15, 6),
         nullable=False,
-        comment="Volume to Open Interest ratio - liquidity indicator",
+        comment="Volume to Open Interest ratio (Volume / Open Interest) - liquidity indicator",
     )
 
     # === GAIN/LOSS CALCULATIONS ===
     gain_14d: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(15, 6), comment="14-day average gain - used in RSI calculation"
+        DECIMAL(15, 6),
+        comment="14-day average gain - calculated from formulas, converted to numerical for RSI calculation",
     )
     loss_14d: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(15, 6), comment="14-day average loss - used in RSI calculation"
+        DECIMAL(15, 6),
+        comment="14-day average loss - calculated from formulas, converted to numerical for RSI calculation",
     )
     rs: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(15, 6), comment="Relative Strength (gain/loss ratio) - component of RSI"
@@ -207,17 +217,17 @@ class Technicals(Base):
 
     # === TRADING SIGNALS & DECISIONS ===
     decision: Mapped[Optional[str]] = mapped_column(
-        VARCHAR(100), comment="Trading decision/recommendation (BUY/SELL/HOLD)"
+        VARCHAR(100), comment="Trading decision: OPEN, HEDGE, or MONITOR"
     )
     confidence: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(15, 6),
-        comment="Confidence level in the trading decision (0-1 or 0-100?)",
+        DECIMAL(5, 2),
+        comment="Confidence level in the trading decision as percentage (0-100%)",
     )
     direction: Mapped[Optional[str]] = mapped_column(
-        VARCHAR(100), comment="Expected price direction (UP/DOWN/SIDEWAYS)"
+        VARCHAR(100), comment="Expected price direction: BULLISH or BEARISH"
     )
     score: Mapped[Optional[str]] = mapped_column(
-        TEXT, comment="Composite trading score - formula or calculation details needed"
+        TEXT, comment="Structured data containing composite trading score calculations"
     )
     conclusion: Mapped[Optional[Decimal]] = mapped_column(
         DECIMAL(15, 6), comment="Final numerical conclusion/score for this period"
@@ -248,7 +258,8 @@ class Indicator(Base):
 
     This table contains processed and normalized versions of technical indicators,
     along with macroeconomic factors and final trading recommendations.
-    Contains 208 records with 29 calculated indicators.
+    Individual scores range from -6 to +6. Updated daily at 11 PM via Make.com automation.
+    Historical data preservation is critical for algorithm testing.
 
     Source: INDICATOR sheet from Excel file
     """
@@ -261,22 +272,33 @@ class Indicator(Base):
         TIMESTAMP,
         nullable=False,
         index=True,
-        comment="Date for this indicator calculation",
+        comment="Date for this indicator calculation (synchronized with technicals.timestamp)",
     )
 
-    # === RAW INDICATOR SCORES ===
-    # These appear to be individual scores for each technical indicator
+    # Commodity identifier
+    commodity_symbol: Mapped[str] = mapped_column(
+        VARCHAR(10),
+        nullable=False,
+        default="CC",
+        index=True,
+        comment="Commodity symbol (CC for Cocoa)",
+    )
+
+    # === RAW INDICATOR SCORES (-6 to +6) ===
+    # Individual scores for each technical indicator on -6 to +6 scale
     rsi_score: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(15, 6), comment="Individual score for RSI indicator"
+        DECIMAL(4, 2), comment="Individual score for RSI indicator (-6 to +6 scale)"
     )
     macd_score: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(15, 6), comment="Individual score for MACD indicator"
+        DECIMAL(4, 2), comment="Individual score for MACD indicator (-6 to +6 scale)"
     )
     stochastic_score: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(15, 6), comment="Individual score for Stochastic oscillator"
+        DECIMAL(4, 2),
+        comment="Individual score for Stochastic oscillator (-6 to +6 scale)",
     )
     atr_score: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(15, 6), comment="Individual score for ATR (volatility measure)"
+        DECIMAL(4, 2),
+        comment="Individual score for ATR (volatility measure) (-6 to +6 scale)",
     )
 
     # === MARKET POSITION SCORES ===
@@ -333,10 +355,12 @@ class Indicator(Base):
 
     # === MACROECONOMIC ANALYSIS ===
     macroeco_score: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(15, 6), comment="Numerical score for macroeconomic conditions"
+        DECIMAL(4, 2), comment="OpenAI-generated macroeconomic score: 0.9, 1.0, or 1.1"
     )
     eco: Mapped[str] = mapped_column(
-        TEXT, nullable=False, comment="Macroeconomic analysis text/description"
+        TEXT,
+        nullable=False,
+        comment="Macroeconomic analysis text/description generated by OpenAI",
     )
 
     # === LATEST VALUES FOR COMPARISON ===
@@ -385,10 +409,9 @@ class MarketResearch(Base):
     """
     Market research and analyst reports with impact analysis.
 
-    This table stores research articles, analyst reports, industry publications,
-    and other market intelligence that may impact commodity prices, along with
-    their synthesized impact assessment on trading decisions.
-    Contains 93 research entries.
+    This table stores research articles, analyst reports, and industry publications
+    focused on cocoa markets. Impact synthesis generated by OpenAI summarization.
+    Updated daily at 10:30 PM via Make.com automation.
 
     Source: BIBLIO_ALL sheet from Excel file
     """
@@ -433,11 +456,11 @@ class MarketResearch(Base):
 
 class WeatherData(Base):
     """
-    Weather and agricultural conditions affecting commodity markets.
+    Weather and agricultural conditions affecting cocoa markets.
 
-    This table stores weather reports, agricultural conditions, and related
-    market sentiment that impacts agricultural commodity prices.
-    Contains 90 weather/agricultural entries.
+    This table stores weather reports and agricultural conditions from Ghana and
+    Côte d'Ivoire (10 locations) that impact cocoa prices. Updated daily at 10:30 PM
+    via Make.com automation. Impact analysis generated by OpenAI.
 
     Source: METEO_ALL sheet from Excel file
     """
@@ -480,8 +503,8 @@ class Config(Base):
     Application configuration parameters for trading algorithms.
 
     This table stores configuration settings for various trading indicators
-    and algorithm parameters that can be adjusted for optimization.
-    Contains 21 configuration parameters.
+    and algorithm parameters. New champion values are updated monthly or less
+    frequently and tested one week before implementation.
 
     Source: CONFIG sheet from Excel file
     """
@@ -529,7 +552,8 @@ class PerformanceTracking(Base):
 
     This table tracks the best performing parameter combinations
     and their associated performance metrics for strategy optimization.
-    Contains 3 performance records.
+    Performance metrics cover 100-day periods. Testing linked to Colab calculator
+    for frequent algorithm challenges and validation.
 
     Source: BEST PERF sheet from Excel file
     """
@@ -551,7 +575,7 @@ class PerformanceTracking(Base):
     limit: Mapped[str] = mapped_column(
         VARCHAR(100),
         nullable=False,
-        comment="Performance limit or threshold (needs clarification on format)",
+        comment="Minimum score tested with Colab calculator (https://colab.research.google.com/drive/1EwQYZ7TtyhsaAArECwsGfyDkqREKbndd) - performance threshold",
     )
 
     # === AUDIT FIELDS ===

@@ -44,7 +44,6 @@ EXCEL_MAPPINGS = {
             "MACD": "macd",
             "SIGNAL": "signal",
             "RSI 14D": "rsi_14d",
-            "%D": "d",
             "ATR(14d)": "atr_14d",
             "Limites de Bolinger": "bollinger_width",
             "Gain": "gain_14d",  # Assuming this is 14-day gain
@@ -52,7 +51,7 @@ EXCEL_MAPPINGS = {
             "Gain(14d)": "gain_14d",
             "Perte(14d)": "loss_14d",
             "RS": "rs",
-            "RSI(14d)": "rsi_14d",  # Note: Potential duplicate
+            # "RSI(14d)": "rsi_14d",  # Removed: duplicate of RSI 14D
             "Stochastic %K (14)": "stochastic_k_14",
             "Stochastic %D (14)": "stochastic_d_14",
             "Close/Pivot": "close_pivot_ratio",
