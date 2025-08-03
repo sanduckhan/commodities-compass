@@ -1,26 +1,24 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/utils';
-import { PlayIcon, PauseIcon } from 'lucide-react';
+import { PlayIcon, PauseIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useState, useRef } from 'react';
 import GaugeIndicator from '@/components/gauge-indicator';
-import { CommodityIndicator } from '@/data/commodities-data';
+import { usePositionStatus } from '@/hooks/useDashboard';
 
 interface PositionStatusProps {
-  position: 'OPEN' | 'CLOSED';
-  ytdPerformance: number;
-  dayIndicator?: CommodityIndicator;
+  targetDate?: string;
+  ytdPerformance?: number;
   className?: string;
   bulletinAudioUrl?: string;
   bulletinTitle?: string;
 }
 
 export default function PositionStatus({
-  position,
-  ytdPerformance,
-  dayIndicator,
+  targetDate,
+  ytdPerformance = 0, // Default to 0 for now
   className,
   bulletinAudioUrl = '/bulletin-of-the-day.mp3', // Default audio URL
   bulletinTitle = 'Bulletin of the Day',
@@ -30,6 +28,12 @@ export default function PositionStatus({
   const [duration, setDuration] = useState(0);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  // Fetch position status from API
+  const { data, isLoading, error } = usePositionStatus(targetDate);
+  
+  // Debug logging
+  console.log('PositionStatus Debug:', { targetDate, data, isLoading, error });
 
   const togglePlayPause = () => {
     if (audioRef.current) {
@@ -67,6 +71,34 @@ export default function PositionStatus({
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   };
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <Card className={cn('flex items-center justify-center h-[180px]', className)}>
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </Card>
+    );
+  }
+
+  // Show error state
+  if (error || !data) {
+    return (
+      <Card className={cn('flex items-center justify-center h-[180px]', className)}>
+        <div className="text-center space-y-2">
+          <p className="text-sm text-muted-foreground">Unable to load position status</p>
+          {error && (
+            <p className="text-xs text-red-500">
+              Error: {error.message || 'Unknown error'}
+            </p>
+          )}
+          <p className="text-xs text-gray-400">Target date: {targetDate}</p>
+        </div>
+      </Card>
+    );
+  }
+
+  const { position, day_indicator } = data;
+
   return (
     <Card className={cn('flex flex-col md:flex-row h-[180px]', className)}>
       <div className="flex-1 border-b md:border-b-0 md:border-r border-border flex flex-col justify-between">
@@ -81,7 +113,9 @@ export default function PositionStatus({
               'text-xl font-bold px-8 py-3',
               position === 'OPEN'
                 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                : position === 'HEDGE'
+                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+                : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
             )}
           >
             {position}
@@ -97,15 +131,17 @@ export default function PositionStatus({
           </CardTitle>
         </CardHeader>
         <CardContent className="flex justify-center items-center py-4 flex-grow">
-          {dayIndicator && (
+          {day_indicator ? (
             <GaugeIndicator
-              value={dayIndicator.value}
-              min={dayIndicator.min}
-              max={dayIndicator.max}
-              label={dayIndicator.label}
+              value={day_indicator.value}
+              min={day_indicator.min}
+              max={day_indicator.max}
+              label={day_indicator.label}
               size="md"
               showLabel={false}
             />
+          ) : (
+            <p className="text-sm text-muted-foreground">No indicator data</p>
           )}
         </CardContent>
       </div>

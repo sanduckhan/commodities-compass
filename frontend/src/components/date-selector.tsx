@@ -2,41 +2,44 @@
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react';
 
 interface DateSelectorProps {
   currentDate: string;
-  availableDates: string[];
   onDateChange: (date: string) => void;
   className?: string;
 }
 
 export default function DateSelector({
   currentDate,
-  availableDates,
   onDateChange,
   className,
 }: DateSelectorProps) {
-  // Find the index of the current date in the available dates array
-  const currentIndex = availableDates.findIndex((date) => date === currentDate);
-
-  // Handle navigation between dates
+  // Handle navigation between dates - go one day back/forward
   const handlePrevious = () => {
-    if (currentIndex < availableDates.length - 1) {
-      onDateChange(availableDates[currentIndex + 1]);
-    }
+    const date = new Date(currentDate);
+    date.setDate(date.getDate() - 1);
+    const newDate = date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long', 
+      day: 'numeric'
+    });
+    onDateChange(newDate);
   };
 
   const handleNext = () => {
-    if (currentIndex > 0) {
-      onDateChange(availableDates[currentIndex - 1]);
+    const date = new Date(currentDate);
+    date.setDate(date.getDate() + 1);
+    const today = new Date();
+    
+    // Don't allow going beyond today
+    if (date <= today) {
+      const newDate = date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      onDateChange(newDate);
     }
   };
 
@@ -59,7 +62,6 @@ export default function DateSelector({
             variant="outline"
             size="icon"
             onClick={handlePrevious}
-            disabled={currentIndex >= availableDates.length - 1}
           >
             <ChevronLeftIcon className="h-4 w-4" />
           </Button>
@@ -67,22 +69,8 @@ export default function DateSelector({
           <div className="flex-1 flex items-center gap-2">
             <CalendarIcon className="h-5 w-5 text-gray-500 hidden sm:block" />
 
-            <div className="hidden md:block font-medium">
+            <div className="font-medium">
               {formatDate(currentDate)}
-            </div>
-            <div className="md:hidden w-full">
-              <Select value={currentDate} onDateChange={onDateChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select date" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableDates.map((date) => (
-                    <SelectItem key={date} value={date}>
-                      {formatDate(date)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           </div>
 
@@ -90,7 +78,7 @@ export default function DateSelector({
             variant="outline"
             size="icon"
             onClick={handleNext}
-            disabled={currentIndex <= 0}
+            disabled={new Date(currentDate).toDateString() === new Date().toDateString()}
           >
             <ChevronRightIcon className="h-4 w-4" />
           </Button>

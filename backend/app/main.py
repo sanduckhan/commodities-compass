@@ -1,10 +1,16 @@
-from datetime import datetime
-from fastapi import FastAPI
+from datetime import datetime, timezone
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.openapi.utils import get_openapi
+import logging
 
 from app.core.config import settings
 from app.api.api_v1.api import api_router
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -14,13 +20,31 @@ app = FastAPI(
 
 # Set all CORS enabled origins
 if settings.BACKEND_CORS_ORIGINS:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    origins = [str(origin) for origin in settings.BACKEND_CORS_ORIGINS]
+else:
+    # Default origins for development
+    origins = [
+        "http://localhost:5173",  # Vite dev server
+        "http://localhost:3000",  # Alternative React dev server
+        f"https://{settings.AUTH0_DOMAIN}",  # Auth0 domain
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for now to debug
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["*"],
+)
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all incoming requests for debugging"""
+    logger.info(f"🔍 {request.method} {request.url} - Headers: {dict(request.headers)}")
+    response = await call_next(request)
+    logger.info(f"🔍 Response status: {response.status_code}")
+    return response
 
 
 @app.get("/")
@@ -34,7 +58,7 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "timestamp": datetime.utcnow()}
+    return {"status": "healthy", "timestamp": datetime.now(timezone.utc)}
 
 
 # Include API router
@@ -64,6 +88,51 @@ def main():
         reload=True,
         log_level="info",
     )
+
+
+def custom_openapi():
+    """Custom OpenAPI schema with Auth0 OAuth2 configuration."""
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    openapi_schema = get_openapi(
+        title=settings.APP_NAME,
+        version=settings.APP_VERSION,
+        description="Business Intelligence application for commodities trading",
+        routes=app.routes,
+    )
+
+    if "components" not in openapi_schema:
+        openapi_schema["components"] = {}
+    if "securitySchemes" not in openapi_schema["components"]:
+        openapi_schema["components"]["securitySchemes"] = {}
+
+    openapi_schema["components"]["securitySchemes"]["Auth0ImplicitBearer"] = {
+        "type": "oauth2",
+        "flows": {
+            "implicit": {
+                "authorizationUrl": f"https://{settings.AUTH0_DOMAIN}/authorize"
+                f"?audience={settings.AUTH0_API_AUDIENCE}",
+                "scopes": {
+                    "openid": "OpenID Connect Features",
+                    "profile": "Read user profile information",
+                    "email": "Read user email address",
+                },
+            }
+        },
+    }
+
+    # Apply security to all operations
+    if "security" not in openapi_schema:
+        openapi_schema["security"] = []
+    openapi_schema["security"].append({"Auth0ImplicitBearer": []})
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+# Override the default OpenAPI schema
+app.openapi = custom_openapi
 
 
 if __name__ == "__main__":

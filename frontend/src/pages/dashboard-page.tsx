@@ -13,8 +13,23 @@ import {
 } from "@/data/commodities-data";
 import { useState } from "react";
 
+// Convert date string to ISO format for API
+const convertToISODate = (dateStr: string): string | undefined => {
+  try {
+    const date = new Date(dateStr);
+    return date.toISOString().split('T')[0]; // YYYY-MM-DD format
+  } catch {
+    return undefined;
+  }
+};
+
 export default function DashboardPage() {
-  const [currentDate, setCurrentDate] = useState(HISTORICAL_DATA[0].date);
+  const today = new Date().toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+  const [currentDate, setCurrentDate] = useState(today);
   const [selectedMetric, setSelectedMetric] = useState("price");
 
   // Get the data for the selected date
@@ -22,8 +37,6 @@ export default function DashboardPage() {
     HISTORICAL_DATA.find((data) => data.date === currentDate) ||
     HISTORICAL_DATA[0];
 
-  // Get all available dates
-  const availableDates = HISTORICAL_DATA.map((data) => data.date);
 
   // Find the selected metric configuration
   const metricConfig =
@@ -36,16 +49,14 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-bold">Commodities Dashboard</h1>
         <DateSelector
           currentDate={currentDate}
-          availableDates={availableDates}
           onDateChange={setCurrentDate}
           className="w-full md:w-auto"
         />
       </div>
 
       <PositionStatus
-        position={currentData.positionOfDay}
+        targetDate={convertToISODate(currentDate)}
         ytdPerformance={currentData.ytdPerformance}
-        dayIndicator={currentData.indicators.dayIndicator}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
