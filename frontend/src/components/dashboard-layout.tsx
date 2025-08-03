@@ -11,6 +11,7 @@ import {
 import { useState, useEffect } from 'react';
 import { cn } from '@/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuth } from '@/hooks/useAuth';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +29,7 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { user, logout } = useAuth();
 
   // Check if mobile on mount and when window resizes
   useEffect(() => {
@@ -136,14 +138,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage
-                      src="https://github.com/yusufhilmi.png"
-                      alt="User"
+                      src={user?.picture}
+                      alt={user?.name || 'User'}
                     />
-
-                    <AvatarFallback>U</AvatarFallback>
+                    <AvatarFallback>
+                      {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </AvatarFallback>
                   </Avatar>
                   {!sidebarCollapsed && (
-                    <span className="ml-3 truncate">User Profile</span>
+                    <span className="ml-3 truncate">
+                      {user?.name || user?.email || 'User Profile'}
+                    </span>
                   )}
                 </Button>
               </DropdownMenuTrigger>
@@ -161,11 +166,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
 
-                <DropdownMenuItem>
-                  <Link to="/login" className="flex w-full items-center">
-                    <LogOutIcon className="mr-2 h-4 w-4" />
-                    Log out
-                  </Link>
+                <DropdownMenuItem onClick={logout}>
+                  <LogOutIcon className="mr-2 h-4 w-4" />
+                  Log out
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
