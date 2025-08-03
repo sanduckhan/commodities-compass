@@ -66,10 +66,10 @@ export default function DateSelector({
             <ChevronLeftIcon className="h-4 w-4" />
           </Button>
 
-          <div className="flex-1 flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-[280px] justify-center">
             <CalendarIcon className="h-5 w-5 text-gray-500 hidden sm:block" />
 
-            <div className="font-medium">
+            <div className="font-medium text-center">
               {formatDate(currentDate)}
             </div>
           </div>
