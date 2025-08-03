@@ -1,7 +1,7 @@
-from typing import List, Union
+from typing import List
 from pydantic_settings import BaseSettings
-from pydantic import AnyHttpUrl, field_validator
 from decouple import config
+import json
 
 
 class Settings(BaseSettings):
@@ -20,16 +20,24 @@ class Settings(BaseSettings):
     AUTH0_ISSUER: str = config("AUTH0_ISSUER")
 
     # CORS
-    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
+    BACKEND_CORS_ORIGINS: List[str] = []
 
-    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
-    @classmethod
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
-            return v
-        raise ValueError(v)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Handle CORS origins from environment
+        cors_origins = config(
+            "BACKEND_CORS_ORIGINS",
+            default='["http://localhost:5173", "http://localhost:3000"]',
+        )
+        if isinstance(cors_origins, str):
+            try:
+                # Try to parse as JSON array first
+                self.BACKEND_CORS_ORIGINS = json.loads(cors_origins)
+            except json.JSONDecodeError:
+                # Fall back to comma-separated string
+                self.BACKEND_CORS_ORIGINS = [
+                    origin.strip() for origin in cors_origins.split(",")
+                ]
 
     # Database
     DATABASE_URL: str = config("DATABASE_URL")

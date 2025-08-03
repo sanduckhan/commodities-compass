@@ -101,9 +101,6 @@ async def get_position_status(
         day_indicator=day_indicator,
     )
 
-    # Debug logging
-    logger.info(f"🔍 Position Status Response: {response.model_dump()}")
-
     return response
 
 

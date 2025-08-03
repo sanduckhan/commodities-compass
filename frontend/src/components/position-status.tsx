@@ -31,9 +31,6 @@ export default function PositionStatus({
   
   // Fetch position status from API
   const { data, isLoading, error } = usePositionStatus(targetDate);
-  
-  // Debug logging
-  console.log('PositionStatus Debug:', { targetDate, data, isLoading, error });
 
   const togglePlayPause = () => {
     if (audioRef.current) {

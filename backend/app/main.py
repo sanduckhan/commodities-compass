@@ -19,19 +19,13 @@ app = FastAPI(
 )
 
 # Set all CORS enabled origins
-if settings.BACKEND_CORS_ORIGINS:
-    origins = [str(origin) for origin in settings.BACKEND_CORS_ORIGINS]
-else:
-    # Default origins for development
-    origins = [
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:3000",  # Alternative React dev server
-        f"https://{settings.AUTH0_DOMAIN}",  # Auth0 domain
-    ]
+origins = settings.BACKEND_CORS_ORIGINS
+
+logger.info(f"🔍 CORS Origins: {origins}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for now to debug
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
@@ -67,7 +61,7 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # Global exception handler
 @app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
+async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
         content={
