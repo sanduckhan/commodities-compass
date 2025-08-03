@@ -1,0 +1,30 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+    -   id: trailing-whitespace
+        files: ^backend/
+    -   id: end-of-file-fixer
+        files: ^backend/
+    -   id: check-yaml
+        files: ^backend/
+    -   id: check-toml
+        files: ^backend/
+
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.5
+    hooks:
+    -   id: ruff
+        args: [--fix]
+        files: ^backend/.*\.py$
+    -   id: ruff-format
+        files: ^backend/.*\.py$
+
+-   repo: local
+    hooks:
+    -   id: pyright
+        name: pyright
+        entry: cd backend && poetry run pyright
+        language: system
+        files: ^backend/.*\.py$
+        require_serial: true
