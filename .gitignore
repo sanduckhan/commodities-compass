@@ -93,6 +93,7 @@ coverage.xml
 *.pem
 credentials.json
 service-account.json
+google-sheets-credentials.json
 
 # Temporary files
 *.tmp

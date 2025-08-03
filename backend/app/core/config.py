@@ -10,9 +10,11 @@ class Settings(BaseSettings):
     APP_VERSION: str = config("APP_VERSION", default="1.0.0")
     API_V1_STR: str = config("API_V1_STR", default="/v1")
     DEBUG: bool = config("DEBUG", default=False, cast=bool)
+    BACKEND_PORT: int = config("BACKEND_PORT", default=8000, cast=int)
 
     # Auth0
     AUTH0_DOMAIN: str = config("AUTH0_DOMAIN")
+    AUTH0_CLIENT_ID: str = config("AUTH0_CLIENT_ID")
     AUTH0_API_AUDIENCE: str = config("AUTH0_API_AUDIENCE")
     AUTH0_ALGORITHMS: List[str] = config("AUTH0_ALGORITHMS", default="RS256").split(",")
     AUTH0_ISSUER: str = config("AUTH0_ISSUER")
@@ -45,6 +47,12 @@ class Settings(BaseSettings):
     # External APIs
     WEATHER_API_KEY: str = config("WEATHER_API_KEY", default="")
     NEWS_API_KEY: str = config("NEWS_API_KEY", default="")
+
+    # AWS Configuration
+    AWS_ACCESS_KEY_ID: str = config("AWS_ACCESS_KEY_ID", default="")
+    AWS_SECRET_ACCESS_KEY: str = config("AWS_SECRET_ACCESS_KEY", default="")
+    AWS_REGION: str = config("AWS_REGION", default="us-east-1")
+    S3_BUCKET_NAME: str = config("S3_BUCKET_NAME", default="")
 
     class Config:
         case_sensitive = True

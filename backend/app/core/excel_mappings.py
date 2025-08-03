@@ -61,7 +61,6 @@ EXCEL_MAPPINGS = {
             "BOLLINGER": "bollinger",
             "BANDE SUP": "bollinger_upper",
             "BANDE INF": "bollinger_lower",
-            "MOYENNE DECALER": "displaced_average",
             "DECISION": "decision",
             "CONFIANCE": "confidence",
             "DIRECTION": "direction",
@@ -75,12 +74,28 @@ EXCEL_MAPPINGS = {
             "close": "parse_decimal",
             "high": "parse_decimal",
             "low": "parse_decimal",
+            "volume": "parse_integer",  # US number format with commas
+            "open_interest": "parse_integer",  # US number format with commas
+            # Pivot points with US comma formatting
+            "r3": "parse_decimal",
+            "r2": "parse_decimal",
+            "r1": "parse_decimal",
+            "pivot": "parse_decimal",
+            "s1": "parse_decimal",
+            "s2": "parse_decimal",
+            "s3": "parse_decimal",
+            "ema12": "parse_decimal",
+            "ema26": "parse_decimal",
+            "macd": "parse_decimal",
+            "bollinger": "parse_decimal",
+            "bollinger_upper": "parse_decimal",
+            "bollinger_lower": "parse_decimal",
             "atr_14d": "parse_decimal_from_string",  # May contain formulas
             "atr": "parse_decimal_from_string",  # May contain formulas
             "gain_14d": "parse_decimal_from_string",  # May contain formulas
             "loss_14d": "parse_decimal_from_string",  # May contain formulas
             "close_pivot_ratio": "parse_decimal_from_string",  # May contain formulas
-            "displaced_average": "parse_decimal_from_string",  # May contain formulas
+            "row_number": "parse_integer",  # String integer values
         },
     },
     "INDICATOR": {

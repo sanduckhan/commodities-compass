@@ -47,18 +47,20 @@ class Indicator(Base):
     # === RAW INDICATOR SCORES (-6 to +6) ===
     # Individual scores for each technical indicator on -6 to +6 scale
     rsi_score: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(4, 2), comment="Individual score for RSI indicator (-6 to +6 scale)"
+        DECIMAL(8, 2),
+        comment="Individual score for RSI indicator (extended range for actual data)",
     )
     macd_score: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(4, 2), comment="Individual score for MACD indicator (-6 to +6 scale)"
+        DECIMAL(8, 2),
+        comment="Individual score for MACD indicator (extended range for actual data)",
     )
     stochastic_score: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(4, 2),
-        comment="Individual score for Stochastic oscillator (-6 to +6 scale)",
+        DECIMAL(8, 2),
+        comment="Individual score for Stochastic oscillator (extended range for actual data)",
     )
     atr_score: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(4, 2),
-        comment="Individual score for ATR (volatility measure) (-6 to +6 scale)",
+        DECIMAL(8, 2),
+        comment="Individual score for ATR (volatility measure) (extended range for actual data)",
     )
 
     # === MARKET POSITION SCORES ===
@@ -115,7 +117,8 @@ class Indicator(Base):
 
     # === MACROECONOMIC ANALYSIS ===
     macroeco_score: Mapped[Optional[Decimal]] = mapped_column(
-        DECIMAL(4, 2), comment="OpenAI-generated macroeconomic score: 0.9, 1.0, or 1.1"
+        DECIMAL(8, 2),
+        comment="OpenAI-generated macroeconomic score (extended range for actual data)",
     )
     eco: Mapped[str] = mapped_column(
         TEXT,
