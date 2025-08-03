@@ -5,7 +5,7 @@ This module contains the mapping between Excel sheets/columns and database table
 for the Commodities Compass data import pipeline.
 """
 
-from app.models.trading import (
+from app.models import (
     Technicals,
     Indicator,
     MarketResearch,
