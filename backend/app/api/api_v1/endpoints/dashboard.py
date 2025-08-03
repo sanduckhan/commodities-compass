@@ -18,31 +18,24 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def normalize_indicator_to_gauge(
+def create_indicator_for_gauge(
     value: Optional[float],
 ) -> Optional[CommodityIndicator]:
     """
-    Normalize final_indicator value from -6/+6 scale to 0-3 scale for gauge display.
+    Create indicator data for gauge display using raw final_indicator values.
 
     Args:
         value: Final indicator value from database (range: -6 to +6)
 
     Returns:
-        CommodityIndicator with normalized value for gauge component
+        CommodityIndicator with raw value for gauge component
     """
     if value is None:
         return None
 
-    # Normalize from [-6, +6] to [0, 3] scale
-    # Formula: (value + 6) * 3 / 12 = (value + 6) / 4
-    normalized_value = (value + 6) / 4
-
-    # Clamp to valid range
-    normalized_value = max(0, min(3, normalized_value))
-
-    return CommodityIndicator(
-        value=normalized_value, min=0, max=3, label="DAY INDICATOR"
-    )
+    # Use raw values - no normalization needed
+    # The gauge component will calculate percentages internally
+    return CommodityIndicator(value=value, min=-6.0, max=6.0, label="DAY INDICATOR")
 
 
 @router.get("/position-status", response_model=PositionStatusResponse)
@@ -90,8 +83,8 @@ async def get_position_status(
     if not indicator:
         raise HTTPException(status_code=404, detail="No indicator data found")
 
-    # Normalize the final_indicator for gauge display
-    day_indicator = normalize_indicator_to_gauge(
+    # Create indicator data for gauge display
+    day_indicator = create_indicator_for_gauge(
         float(indicator.final_indicator) if indicator.final_indicator else None
     )
 
