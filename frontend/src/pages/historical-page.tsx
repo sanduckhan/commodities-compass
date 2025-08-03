@@ -7,26 +7,27 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DownloadIcon, FilterIcon } from "lucide-react";
 import { Line, LineChart, CartesianGrid, XAxis } from "recharts";
-import { HISTORICAL_DATA } from "@/polymet/data/commodities-data";
+import { HISTORICAL_DATA, DashboardData } from "@/data/commodities-data";
 import { useState } from "react";
-import GaugeIndicator from "@/polymet/components/gauge-indicator";
-import { DatePickerWithRange } from "@/polymet/components/date-range-picker";
-import DashboardLayout from "@/polymet/components/dashboard-layout";
+import GaugeIndicator from "@/components/gauge-indicator";
+import { DatePickerWithRange } from "@/components/date-range-picker";
+
+type IndicatorKey = keyof DashboardData['indicators'];
 
 export default function HistoricalPage() {
   const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
-  const [selectedIndicator, setSelectedIndicator] = useState<string>("dayIndicator");
+  const [selectedIndicator, setSelectedIndicator] = useState<IndicatorKey>("dayIndicator");
 
   // Prepare data for charts
   const chartData = HISTORICAL_DATA.map(data => ({
     date: data.date,
-    value: data.indicators[selectedIndicator as keyof typeof data.indicators].value,
+    value: data.indicators[selectedIndicator].value,
     ytdPerformance: data.ytdPerformance,
     position: data.positionOfDay
   })).reverse();
 
   // Get indicator details for the selected indicator
-  const indicatorDetails = HISTORICAL_DATA[0].indicators[selectedIndicator as keyof typeof HISTORICAL_DATA[0].indicators];
+  const indicatorDetails = HISTORICAL_DATA[0].indicators[selectedIndicator];
 
   return (
     <div className="space-y-6">
@@ -65,7 +66,7 @@ export default function HistoricalPage() {
                   key={key}
                   variant={selectedIndicator === key ? "default" : "outline"}
                   className="w-full"
-                  onClick={() => setSelectedIndicator(key)}
+                  onClick={() => setSelectedIndicator(key as IndicatorKey)}
                 >
                   {indicator.label}
                 </Button>
@@ -104,7 +105,7 @@ export default function HistoricalPage() {
                 <div className="w-full md:w-1/3 flex flex-col items-center">
                   <h3 className="text-lg font-medium mb-4">{indicatorDetails.label} - Latest Value</h3>
                   <GaugeIndicator
-                    value={HISTORICAL_DATA[0].indicators[selectedIndicator as keyof typeof HISTORICAL_DATA[0].indicators].value}
+                    value={HISTORICAL_DATA[0].indicators[selectedIndicator].value}
                     min={indicatorDetails.min}
                     max={indicatorDetails.max}
                     label={indicatorDetails.label}

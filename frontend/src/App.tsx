@@ -6,10 +6,10 @@ import {
   Navigate,
 } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
-import DashboardLayout from '@/polymet/components/dashboard-layout';
-import LoginPage from '@/polymet/pages/login-page-auth0';
-import DashboardPage from '@/pages/DashboardPage';
-import HistoricalPage from '@/pages/HistoricalPage';
+import DashboardLayout from '@/components/dashboard-layout';
+import LoginPage from '@/pages/login-page-auth0';
+import DashboardPage from '@/pages/dashboard-page';
+import HistoricalPage from '@/pages/historical-page';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {

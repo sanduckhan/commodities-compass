@@ -24,11 +24,13 @@ This is a monorepo containing:
 ### Installation
 
 1. Install all dependencies:
+
 ```bash
 npm run install:all
 ```
 
 2. Set up environment files:
+
 ```bash
 # Backend
 cp backend/.env.example backend/.env
@@ -40,11 +42,13 @@ cp frontend/.env.example frontend/.env
 ```
 
 3. Start PostgreSQL and Redis:
+
 ```bash
 npm run db:up
 ```
 
 4. Run database migrations (once available):
+
 ```bash
 cd backend && poetry run alembic upgrade head
 ```
@@ -52,11 +56,13 @@ cd backend && poetry run alembic upgrade head
 ### Development
 
 Start both frontend and backend in development mode:
+
 ```bash
 npm run dev
 ```
 
 Or run them separately:
+
 ```bash
 # Backend only (http://localhost:8000)
 npm run dev:backend
@@ -82,6 +88,10 @@ npm run dev:frontend
 commodities-compass/
 ├── backend/                # FastAPI backend
 │   ├── app/               # Application code
+│   │   ├── core/          # Core functionality & mappings
+│   │   ├── models/        # SQLAlchemy database models
+│   │   ├── services/      # Business logic (ETL, etc.)
+│   │   └── api/           # API endpoints
 │   ├── tests/             # Backend tests
 │   ├── scripts/           # Data import and utility scripts
 │   ├── alembic/           # Database migrations
@@ -92,20 +102,24 @@ commodities-compass/
 │   └── package.json       # Frontend dependencies
 ├── static-react-app/      # Original static prototype (reference)
 ├── excel-sheet/           # Excel data files
+├── scripts/               # Analysis and migration scripts
 └── package.json           # Monorepo configuration
 ```
 
 ## Tech Stack
 
 ### Backend
+
 - **FastAPI** - Modern Python web framework
 - **SQLAlchemy** - ORM with async support
-- **PostgreSQL** - Primary database
+- **PostgreSQL** - Primary database with custom schema for trading data
 - **Auth0** - Authentication
-- **Pandas** - Data processing
+- **Pandas** - Data processing and ETL pipeline
 - **Google Sheets API** - Data ingestion
+- **Alembic** - Database migrations
 
 ### Frontend
+
 - **React** - UI framework
 - **TypeScript** - Type safety
 - **Vite** - Build tool
@@ -115,6 +129,7 @@ commodities-compass/
 - **Recharts** - Data visualization
 
 ### Development
+
 - **Poetry** - Python dependency management
 - **ESLint/Prettier** - Code linting and formatting
 - **Pre-commit** - Git hooks for code quality
@@ -123,8 +138,9 @@ commodities-compass/
 ## API Documentation
 
 Once the backend is running, visit:
-- Swagger UI: http://localhost:8000/api/v1/docs
-- ReDoc: http://localhost:8000/api/v1/redoc
+
+- Swagger UI: <http://localhost:8000/v1/docs>
+- ReDoc: <http://localhost:8000/v1/redoc>
 
 ## Authentication Setup
 

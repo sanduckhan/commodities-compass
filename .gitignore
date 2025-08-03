@@ -97,6 +97,3 @@ service-account.json
 # Temporary files
 *.tmp
 *.temp
-
-excel-sheet
-static-react-app

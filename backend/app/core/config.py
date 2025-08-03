@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = config("APP_NAME", default="Commodities Compass")
     APP_VERSION: str = config("APP_VERSION", default="1.0.0")
-    API_V1_STR: str = config("API_V1_STR", default="/api/v1")
+    API_V1_STR: str = config("API_V1_STR", default="/v1")
     DEBUG: bool = config("DEBUG", default=False, cast=bool)
 
     # Auth0
