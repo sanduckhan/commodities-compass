@@ -64,3 +64,19 @@ class IndicatorData(BaseModel):
             datetime: lambda v: v.isoformat(),
             Decimal: lambda v: float(v) if v is not None else None,
         }
+
+
+class IndicatorsGridResponse(BaseModel):
+    """
+    Response schema for indicators grid endpoint.
+
+    Contains all indicators with their values and ranges.
+    """
+
+    date: datetime = Field(..., description="Date of the indicators")
+    indicators: dict[str, CommodityIndicator] = Field(
+        ..., description="Map of indicator names to their data"
+    )
+
+    class Config:
+        json_encoders = {datetime: lambda v: v.isoformat()}

@@ -36,7 +36,11 @@ export default function GaugeIndicator({
     if (ranges && ranges.length > 0) {
       // Find which range the current value falls into
       for (const range of ranges) {
-        if (value >= range.range_low && value <= range.range_high) {
+        // Handle both normal and inverted ranges
+        const rangeMin = Math.min(range.range_low, range.range_high);
+        const rangeMax = Math.max(range.range_low, range.range_high);
+        
+        if (value >= rangeMin && value <= rangeMax) {
           switch (range.area) {
             case 'RED': return "text-red-500";
             case 'ORANGE': return "text-yellow-500";
@@ -45,7 +49,7 @@ export default function GaugeIndicator({
           }
         }
       }
-      // If no range matches, use default logic
+      // If no range matches, use default color
       return "text-gray-500";
     }
     
@@ -65,15 +69,43 @@ export default function GaugeIndicator({
         { startAngle: Math.PI * 1/3, endAngle: 0, color: "text-green-500" }
       ];
     }
+    
+
+    // Sort ranges by their position on the scale
+    const sortedRanges = [...ranges].sort((a, b) => {
+      const aMid = (a.range_low + a.range_high) / 2;
+      const bMid = (b.range_low + b.range_high) / 2;
+      return aMid - bMid;
+    });
 
     // Convert ranges to angle sections
-    return ranges.map(range => {
-      const startPercent = ((range.range_low - min) / (max - min)) * 100;
-      const endPercent = ((range.range_high - min) / (max - min)) * 100;
+    return sortedRanges.map(range => {
+      // For inverted ranges, we need to use the original values
+      // to determine which is the start and which is the end
+      let startValue, endValue;
+      
+      if (range.range_low <= range.range_high) {
+        // Normal range
+        startValue = range.range_low;
+        endValue = range.range_high;
+      } else {
+        // Inverted range - swap them
+        startValue = range.range_high;
+        endValue = range.range_low;
+      }
+      
+      // Calculate percentages
+      const startPercent = ((startValue - min) / (max - min)) * 100;
+      const endPercent = ((endValue - min) / (max - min)) * 100;
+      
+      // Clamp percentages to 0-100 range
+      const clampedStartPercent = Math.max(0, Math.min(100, startPercent));
+      const clampedEndPercent = Math.max(0, Math.min(100, endPercent));
       
       // Convert percentages to angles (180° to 0° semicircle)
-      const startAngle = Math.PI - (Math.max(0, Math.min(100, startPercent)) / 100) * Math.PI;
-      const endAngle = Math.PI - (Math.max(0, Math.min(100, endPercent)) / 100) * Math.PI;
+      // For the gauge: 180° (left) = 0%, 0° (right) = 100%
+      const startAngle = Math.PI - (clampedStartPercent / 100) * Math.PI;
+      const endAngle = Math.PI - (clampedEndPercent / 100) * Math.PI;
       
       const colorClass = range.area === 'RED' ? "text-red-500" : 
                         range.area === 'ORANGE' ? "text-yellow-500" : 

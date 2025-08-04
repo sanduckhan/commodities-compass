@@ -15,6 +15,7 @@ from app.schemas.dashboard import (
     CommodityIndicator,
     IndicatorData,
     IndicatorRange,
+    IndicatorsGridResponse,
 )
 
 router = APIRouter()
@@ -113,24 +114,33 @@ async def create_indicator_for_gauge(
     )
     test_ranges = result.scalars().all()
 
-    # Convert to IndicatorRange schema objects
-    ranges = (
-        [
-            IndicatorRange(
-                range_low=float(tr.range_low),
-                range_high=float(tr.range_high),
-                area=tr.area,
-            )
-            for tr in test_ranges
-        ]
-        if test_ranges
-        else None
-    )
+    if not test_ranges:
+        raise ValueError(
+            f"No ranges defined for indicator '{indicator_name}' in test_range table"
+        )
 
-    # Use raw values - no normalization needed
-    # The gauge component will calculate percentages internally
+    # Convert to IndicatorRange schema objects
+    ranges = [
+        IndicatorRange(
+            range_low=float(tr.range_low),
+            range_high=float(tr.range_high),
+            area=tr.area,
+        )
+        for tr in test_ranges
+    ]
+
+    # Calculate min and max from ranges
+    # Get all range boundaries
+    all_values = []
+    for r in ranges:
+        all_values.extend([r.range_low, r.range_high])
+
+    # Min and max are the extremes of all range values
+    min_value = min(all_values)
+    max_value = max(all_values)
+
     return CommodityIndicator(
-        value=value, min=-6.0, max=6.0, label="DAY INDICATOR", ranges=ranges
+        value=value, min=min_value, max=max_value, label="DAY INDICATOR", ranges=ranges
     )
 
 
@@ -199,6 +209,85 @@ async def get_position_status(
     )
 
     return response
+
+
+@router.get("/indicators-grid", response_model=IndicatorsGridResponse)
+async def get_indicators_grid(
+    target_date: Optional[str] = Query(
+        default=None,
+        description="Specific date for indicators data (YYYY-MM-DD format)",
+    ),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> IndicatorsGridResponse:
+    """
+    Get all indicators for the grid display.
+
+    Returns indicator values with their ranges from the test_range table.
+
+    Args:
+        target_date: Optional specific date. If not provided, returns latest data.
+        current_user: Authenticated user
+        db: Database session
+
+    Returns:
+        All indicators with their current values and color ranges
+
+    Raises:
+        HTTPException: If no data found
+    """
+    # Build query for latest indicator data
+    query = select(Indicator).order_by(desc(Indicator.date))
+
+    if target_date:
+        try:
+            # Parse the date string to date object
+            parsed_date = datetime.strptime(target_date, "%Y-%m-%d").date()
+
+            # Convert weekend dates to previous Friday (markets are closed on weekends)
+            business_date = get_business_date(parsed_date)
+
+            # Log the conversion if weekend date was requested
+            if business_date != parsed_date:
+                logger.info(
+                    f"Weekend date {parsed_date} converted to business date {business_date}"
+                )
+
+            query = query.where(Indicator.date == business_date)
+        except ValueError:
+            raise HTTPException(
+                status_code=400, detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+    # Get the most recent indicator record
+    result = await db.execute(query)
+    indicator = result.scalars().first()
+
+    if not indicator:
+        raise HTTPException(status_code=404, detail="No indicator data found")
+
+    # Create indicators for each metric
+    indicators = {}
+
+    # Map of indicator names to their database fields and display labels
+    indicator_configs = [
+        ("macroeco", indicator.macroeco_score, "MACROECO", "MACROECO"),
+        ("rsi", indicator.rsi_norm, "RSI", "RSI"),
+        ("macd", indicator.macd_norm, "MACD", "MACD"),
+        ("percentK", indicator.stoch_k_norm, "%K", "%K"),
+        ("atr", indicator.atr_norm, "ATR", "ATR"),
+        ("volOi", indicator.vol_oi_norm, "VOL/OI", "VOL_OI"),
+    ]
+
+    for key, value, label, range_indicator_name in indicator_configs:
+        if value is not None:
+            indicators[key] = await create_indicator_for_gauge(
+                float(value), db=db, indicator_name=range_indicator_name
+            )
+            # Override the label to match frontend expectations
+            indicators[key].label = label
+
+    return IndicatorsGridResponse(date=indicator.date, indicators=indicators)
 
 
 @router.get("/latest-indicator", response_model=IndicatorData)

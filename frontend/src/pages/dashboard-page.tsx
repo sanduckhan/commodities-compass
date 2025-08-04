@@ -61,14 +61,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-2">
           <IndicatorsGrid
-            indicators={{
-              macroeco: currentData.indicators.macroeco,
-              rsi: currentData.indicators.rsi,
-              macd: currentData.indicators.macd,
-              percentK: currentData.indicators.percentK,
-              atr: currentData.indicators.atr,
-              volOi: currentData.indicators.volOi,
-            }}
+            targetDate={convertToISODate(currentDate)}
           />
         </div>
         <div className="lg:col-span-3">

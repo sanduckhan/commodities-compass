@@ -17,3 +17,10 @@ export interface PositionStatusResponse {
   position: 'OPEN' | 'HEDGE' | 'MONITOR';
   ytd_performance: number;
 }
+
+export interface IndicatorsGridResponse {
+  date: string;
+  indicators: {
+    [key: string]: CommodityIndicator;
+  };
+}

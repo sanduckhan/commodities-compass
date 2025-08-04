@@ -1,24 +1,48 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import GaugeIndicator from "@/components/gauge-indicator";
-import { CommodityIndicator } from "@/data/commodities-data";
-import { TrendingUpIcon, ActivityIcon } from "lucide-react";
+import { TrendingUpIcon, ActivityIcon, Loader2 } from "lucide-react";
+import { useIndicatorsGrid } from "@/hooks/useDashboard";
+import { cn } from "@/utils";
 
 interface IndicatorsGridProps {
-  indicators: {
-    macroeco: CommodityIndicator;
-    rsi: CommodityIndicator;
-    macd: CommodityIndicator;
-    percentK: CommodityIndicator;
-    atr: CommodityIndicator;
-    volOi: CommodityIndicator;
-  };
+  targetDate?: string;
   className?: string;
 }
 
 export default function IndicatorsGrid({
-  indicators,
+  targetDate,
   className,
 }: IndicatorsGridProps) {
+  // Fetch indicators from API
+  const { data, isLoading, error } = useIndicatorsGrid(targetDate);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <Card className={cn("flex items-center justify-center h-[400px]", className)}>
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </Card>
+    );
+  }
+
+  // Show error state
+  if (error || !data?.indicators) {
+    return (
+      <Card className={cn("flex items-center justify-center h-[400px]", className)}>
+        <div className="text-center space-y-2">
+          <p className="text-sm text-muted-foreground">Unable to load indicators</p>
+          {error && (
+            <p className="text-xs text-red-500">
+              Error: {error.message || 'Unknown error'}
+            </p>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  const { indicators } = data;
+
   return (
     <Card className={className}>
       <CardHeader>
@@ -30,34 +54,42 @@ export default function IndicatorsGrid({
           <div className="space-y-4">
             <div className="flex items-center gap-2 border-b pb-2">
               <TrendingUpIcon className="h-4 w-4 text-primary" />
-
               <h3 className="text-sm font-medium">Tendances</h3>
             </div>
 
             <div className="grid grid-cols-3 gap-4 justify-items-center">
-              <GaugeIndicator
-                value={indicators.macroeco.value}
-                min={indicators.macroeco.min}
-                max={indicators.macroeco.max}
-                label={indicators.macroeco.label}
-                size="sm"
-              />
+              {indicators.macroeco && (
+                <GaugeIndicator
+                  value={indicators.macroeco.value}
+                  min={indicators.macroeco.min}
+                  max={indicators.macroeco.max}
+                  label={indicators.macroeco.label}
+                  ranges={indicators.macroeco.ranges}
+                  size="sm"
+                />
+              )}
 
-              <GaugeIndicator
-                value={indicators.macd.value}
-                min={indicators.macd.min}
-                max={indicators.macd.max}
-                label={indicators.macd.label}
-                size="sm"
-              />
+              {indicators.macd && (
+                <GaugeIndicator
+                  value={indicators.macd.value}
+                  min={indicators.macd.min}
+                  max={indicators.macd.max}
+                  label={indicators.macd.label}
+                  ranges={indicators.macd.ranges}
+                  size="sm"
+                />
+              )}
 
-              <GaugeIndicator
-                value={indicators.volOi.value}
-                min={indicators.volOi.min}
-                max={indicators.volOi.max}
-                label={indicators.volOi.label}
-                size="sm"
-              />
+              {indicators.volOi && (
+                <GaugeIndicator
+                  value={indicators.volOi.value}
+                  min={indicators.volOi.min}
+                  max={indicators.volOi.max}
+                  label={indicators.volOi.label}
+                  ranges={indicators.volOi.ranges}
+                  size="sm"
+                />
+              )}
             </div>
           </div>
 
@@ -65,34 +97,42 @@ export default function IndicatorsGrid({
           <div className="space-y-4">
             <div className="flex items-center gap-2 border-b pb-2">
               <ActivityIcon className="h-4 w-4 text-primary" />
-
               <h3 className="text-sm font-medium">Volatilité</h3>
             </div>
 
             <div className="grid grid-cols-3 gap-4 justify-items-center">
-              <GaugeIndicator
-                value={indicators.rsi.value}
-                min={indicators.rsi.min}
-                max={indicators.rsi.max}
-                label={indicators.rsi.label}
-                size="sm"
-              />
+              {indicators.rsi && (
+                <GaugeIndicator
+                  value={indicators.rsi.value}
+                  min={indicators.rsi.min}
+                  max={indicators.rsi.max}
+                  label={indicators.rsi.label}
+                  ranges={indicators.rsi.ranges}
+                  size="sm"
+                />
+              )}
 
-              <GaugeIndicator
-                value={indicators.percentK.value}
-                min={indicators.percentK.min}
-                max={indicators.percentK.max}
-                label={indicators.percentK.label}
-                size="sm"
-              />
+              {indicators.percentK && (
+                <GaugeIndicator
+                  value={indicators.percentK.value}
+                  min={indicators.percentK.min}
+                  max={indicators.percentK.max}
+                  label={indicators.percentK.label}
+                  ranges={indicators.percentK.ranges}
+                  size="sm"
+                />
+              )}
 
-              <GaugeIndicator
-                value={indicators.atr.value}
-                min={indicators.atr.min}
-                max={indicators.atr.max}
-                label={indicators.atr.label}
-                size="sm"
-              />
+              {indicators.atr && (
+                <GaugeIndicator
+                  value={indicators.atr.value}
+                  min={indicators.atr.min}
+                  max={indicators.atr.max}
+                  label={indicators.atr.label}
+                  ranges={indicators.atr.ranges}
+                  size="sm"
+                />
+              )}
             </div>
           </div>
         </div>
