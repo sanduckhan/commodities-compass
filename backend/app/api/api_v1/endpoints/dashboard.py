@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,34 +8,87 @@ import logging
 from app.core.database import get_db
 from app.core.auth import get_current_user
 from app.models.indicator import Indicator
+from app.models.test_range import TestRange
 from app.schemas.dashboard import (
     PositionStatusResponse,
     CommodityIndicator,
     IndicatorData,
+    IndicatorRange,
 )
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def create_indicator_for_gauge(
-    value: Optional[float],
+def get_business_date(target_date: date) -> date:
+    """
+    Convert weekend dates to the previous Friday for market data.
+
+    Markets are closed on weekends, so:
+    - Saturday (weekday 5) -> Previous Friday
+    - Sunday (weekday 6) -> Previous Friday
+    - Weekdays (0-4) -> Return as-is
+
+    Args:
+        target_date: The requested date
+
+    Returns:
+        Business date (previous Friday if weekend, otherwise the same date)
+    """
+    weekday = target_date.weekday()
+
+    if weekday == 5:  # Saturday
+        return target_date - timedelta(days=1)  # Previous Friday
+    elif weekday == 6:  # Sunday
+        return target_date - timedelta(days=2)  # Previous Friday
+    else:
+        return target_date  # Weekday, return as-is
+
+
+async def create_indicator_for_gauge(
+    value: Optional[float], db: AsyncSession, indicator_name: str = "MACROECO"
 ) -> Optional[CommodityIndicator]:
     """
     Create indicator data for gauge display using raw final_indicator values.
 
     Args:
         value: Final indicator value from database (range: -6 to +6)
+        db: Database session
+        indicator_name: Name of the indicator to fetch ranges for
 
     Returns:
-        CommodityIndicator with raw value for gauge component
+        CommodityIndicator with raw value and color ranges
     """
     if value is None:
         return None
 
+    # Fetch ranges for this indicator from test_range table
+    result = await db.execute(
+        select(TestRange)
+        .where(TestRange.indicator == indicator_name)
+        .order_by(TestRange.range_low)
+    )
+    test_ranges = result.scalars().all()
+
+    # Convert to IndicatorRange schema objects
+    ranges = (
+        [
+            IndicatorRange(
+                range_low=float(tr.range_low),
+                range_high=float(tr.range_high),
+                area=tr.area,
+            )
+            for tr in test_ranges
+        ]
+        if test_ranges
+        else None
+    )
+
     # Use raw values - no normalization needed
     # The gauge component will calculate percentages internally
-    return CommodityIndicator(value=value, min=-6.0, max=6.0, label="DAY INDICATOR")
+    return CommodityIndicator(
+        value=value, min=-6.0, max=6.0, label="DAY INDICATOR", ranges=ranges
+    )
 
 
 @router.get("/position-status", response_model=PositionStatusResponse)
@@ -70,7 +123,17 @@ async def get_position_status(
         try:
             # Parse the date string to date object
             parsed_date = datetime.strptime(target_date, "%Y-%m-%d").date()
-            query = query.where(Indicator.date == parsed_date)
+
+            # Convert weekend dates to previous Friday (markets are closed on weekends)
+            business_date = get_business_date(parsed_date)
+
+            # Log the conversion if weekend date was requested
+            if business_date != parsed_date:
+                logger.info(
+                    f"Weekend date {parsed_date} converted to business date {business_date}"
+                )
+
+            query = query.where(Indicator.date == business_date)
         except ValueError:
             raise HTTPException(
                 status_code=400, detail="Invalid date format. Use YYYY-MM-DD format."
@@ -83,15 +146,9 @@ async def get_position_status(
     if not indicator:
         raise HTTPException(status_code=404, detail="No indicator data found")
 
-    # Create indicator data for gauge display
-    day_indicator = create_indicator_for_gauge(
-        float(indicator.final_indicator) if indicator.final_indicator else None
-    )
-
     response = PositionStatusResponse(
         date=indicator.date,
         position=indicator.conclusion or "MONITOR",  # Default to MONITOR if None
-        day_indicator=day_indicator,
     )
 
     return response

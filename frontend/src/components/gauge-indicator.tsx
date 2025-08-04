@@ -1,11 +1,13 @@
 import React from "react";
 import { cn } from "@/utils";
+import type { IndicatorRange } from "@/types/dashboard";
 
 interface GaugeIndicatorProps {
   value: number;
   min: number;
   max: number;
   label: string;
+  ranges?: IndicatorRange[];
   size?: "sm" | "md" | "lg";
   showValue?: boolean;
   showLabel?: boolean;
@@ -17,6 +19,7 @@ export default function GaugeIndicator({
   min,
   max,
   label,
+  ranges,
   size = "md",
   showValue = true,
   showLabel = true,
@@ -28,11 +31,56 @@ export default function GaugeIndicator({
     Math.min(100, ((value - min) / (max - min)) * 100)
   );
 
-  // Determine color based on value position
+  // Determine color based on ranges or fallback to percentage
   const getColor = () => {
+    if (ranges && ranges.length > 0) {
+      // Find which range the current value falls into
+      for (const range of ranges) {
+        if (value >= range.range_low && value <= range.range_high) {
+          switch (range.area) {
+            case 'RED': return "text-red-500";
+            case 'ORANGE': return "text-yellow-500";
+            case 'GREEN': return "text-green-500";
+            default: return "text-gray-500";
+          }
+        }
+      }
+      // If no range matches, use default logic
+      return "text-gray-500";
+    }
+    
+    // Fallback to old percentage-based logic if no ranges provided
     if (percentage <= 33) return "text-red-500";
     if (percentage <= 66) return "text-yellow-500";
     return "text-green-500";
+  };
+
+  // Generate color sections based on ranges
+  const generateColorSections = () => {
+    if (!ranges || ranges.length === 0) {
+      // Fallback to equal sections
+      return [
+        { startAngle: Math.PI, endAngle: Math.PI * 2/3, color: "text-red-500" },
+        { startAngle: Math.PI * 2/3, endAngle: Math.PI * 1/3, color: "text-yellow-500" },
+        { startAngle: Math.PI * 1/3, endAngle: 0, color: "text-green-500" }
+      ];
+    }
+
+    // Convert ranges to angle sections
+    return ranges.map(range => {
+      const startPercent = ((range.range_low - min) / (max - min)) * 100;
+      const endPercent = ((range.range_high - min) / (max - min)) * 100;
+      
+      // Convert percentages to angles (180° to 0° semicircle)
+      const startAngle = Math.PI - (Math.max(0, Math.min(100, startPercent)) / 100) * Math.PI;
+      const endAngle = Math.PI - (Math.max(0, Math.min(100, endPercent)) / 100) * Math.PI;
+      
+      const colorClass = range.area === 'RED' ? "text-red-500" : 
+                        range.area === 'ORANGE' ? "text-yellow-500" : 
+                        "text-green-500";
+      
+      return { startAngle, endAngle, color: colorClass };
+    });
   };
 
   // Size classes
@@ -63,15 +111,20 @@ export default function GaugeIndicator({
   const markerX = centerX + radius * Math.cos(currentAngle);
   const markerY = centerY - radius * Math.abs(Math.sin(currentAngle)); // Use negative to go upward
 
-  // Calculate equal sections for colored arcs (each section is 60 degrees = π/3 radians)
-  const section1Angle = Math.PI * 2/3; // 120° - end of red section
-  const section2Angle = Math.PI * 1/3; // 60° - end of yellow section
+  // Get the color sections based on ranges
+  const colorSections = generateColorSections();
   
-  // Calculate coordinates for section boundaries
-  const section1X = centerX + radius * Math.cos(section1Angle);
-  const section1Y = centerY - radius * Math.abs(Math.sin(section1Angle));
-  const section2X = centerX + radius * Math.cos(section2Angle);
-  const section2Y = centerY - radius * Math.abs(Math.sin(section2Angle));
+  // Helper function to create SVG path for arc section
+  const createArcPath = (startAngle: number, endAngle: number) => {
+    const startX = centerX + radius * Math.cos(startAngle);
+    const startY = centerY - radius * Math.abs(Math.sin(startAngle));
+    const endX = centerX + radius * Math.cos(endAngle);
+    const endY = centerY - radius * Math.abs(Math.sin(endAngle));
+    
+    const largeArcFlag = Math.abs(startAngle - endAngle) > Math.PI ? 1 : 0;
+    
+    return `M${startX},${startY} A${radius},${radius} 0 ${largeArcFlag},1 ${endX},${endY}`;
+  };
 
   return (
     <div className={cn("flex flex-col items-center", className)}>
@@ -91,33 +144,17 @@ export default function GaugeIndicator({
             className="text-gray-200 dark:text-gray-700"
           />
 
-          {/* Colored sections - equally divided */}
-          {/* Red section: 0-33% (180° to 120°) */}
-          <path
-            d={`M10,60 A50,50 0 0,1 ${section1X},${section1Y}`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="8"
-            className="text-red-500"
-          />
-
-          {/* Yellow section: 33-66% (120° to 60°) */}
-          <path
-            d={`M${section1X},${section1Y} A50,50 0 0,1 ${section2X},${section2Y}`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="8"
-            className="text-yellow-500"
-          />
-
-          {/* Green section: 66-100% (60° to 0°) */}
-          <path
-            d={`M${section2X},${section2Y} A50,50 0 0,1 110,60`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="8"
-            className="text-green-500"
-          />
+          {/* Dynamic colored sections based on ranges */}
+          {colorSections.map((section, index) => (
+            <path
+              key={index}
+              d={createArcPath(section.startAngle, section.endAngle)}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="8"
+              className={section.color}
+            />
+          ))}
 
           {/* Marker on the perimeter */}
           <circle

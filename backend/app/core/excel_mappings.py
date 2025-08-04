@@ -10,9 +10,7 @@ from app.models import (
     Indicator,
     MarketResearch,
     WeatherData,
-    Config,
-    PerformanceTracking,
-    Podcast,
+    TestRange,
 )
 
 
@@ -159,50 +157,18 @@ EXCEL_MAPPINGS = {
         },
         "transforms": {"date": "parse_datetime"},
     },
-    "CONFIG": {
-        "table_model": Config,
-        "sheet_name": "CONFIG",
+    "TEST RANGE": {
+        "table_model": TestRange,
+        "sheet_name": "TEST RANGE",
         "column_mapping": {
-            "PARAMETRE": "parameter",
-            "INDICATOR": "indicator",
-            "VAL MIN": "val_min",
-            "VAL MAX": "val_max",
-            "PAS": "step",
-            "ACTUEL": "current",
-            "NEW CHAMPION": "new_champion",
-            "TEST": "test",
-        },
-        "transforms": {},
-    },
-    "BEST PERF": {
-        "table_model": PerformanceTracking,
-        "sheet_name": "BEST PERF",
-        "column_mapping": {
-            "PERFORMANCE": "performance",
-            "ACTUELLE": "current",
-            "NEW": "new",
-            "LIMITE": "limit",
-        },
-        "transforms": {},
-    },
-    "PODCAST": {
-        "table_model": Podcast,
-        "sheet_name": "PODCAST",
-        "column_mapping": {
-            "DATE": "date",
-            "CONCLUSION": "conclusion",
-            "METEO DATE": "meteo_date",
-            "METEO CONCLUSION": "meteo_conclusion",
-            "PRESS DATE": "press_date",
-            "PRESS AUTEUR": "press_author",
-            "PRESS TEXT": "press_text",
-            "POSITION": "position",
-            "DIALOGUE": "dialogue",
+            "indicator": "indicator",
+            "range_low": "range_low",
+            "range_high": "range_high",
+            "area": "area",
         },
         "transforms": {
-            "date": "parse_datetime",
-            "meteo_date": "parse_datetime",
-            "press_date": "parse_datetime",
+            "range_low": "parse_decimal",
+            "range_high": "parse_decimal",
         },
     },
 }

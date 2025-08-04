@@ -58,6 +58,7 @@ pre-commit = "^3.6.0"
 [tool.poetry.scripts]
 dev = "app.main:main"
 lint = "app.lint:main"
+import = "app.services.data_import:main"
 
 [build-system]
 requires = ["poetry-core"]

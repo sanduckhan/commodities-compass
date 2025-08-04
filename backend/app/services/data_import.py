@@ -369,7 +369,12 @@ async def run_google_sheets_import(
             print(f"{stats['table_name']}: {stats['record_count']} records")
 
 
-if __name__ == "__main__":
+def main():
+    """Entry point for Poetry script."""
     import asyncio
 
     asyncio.run(run_google_sheets_import())
+
+
+if __name__ == "__main__":
+    main()

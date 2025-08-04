@@ -5,7 +5,6 @@ import { PlayIcon, PauseIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useState, useRef } from 'react';
-import GaugeIndicator from '@/components/gauge-indicator';
 import { usePositionStatus } from '@/hooks/useDashboard';
 
 interface PositionStatusProps {
@@ -94,7 +93,21 @@ export default function PositionStatus({
     );
   }
 
-  const { position, day_indicator } = data;
+  const { position } = data;
+
+  // Get badge styles based on position value
+  const getBadgeStyles = () => {
+    switch (position) {
+      case 'HEDGE':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+      case 'MONITOR':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+      case 'OPEN':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+    }
+  };
 
   return (
     <Card className={cn('flex flex-col md:flex-row h-[180px]', className)}>
@@ -108,11 +121,7 @@ export default function PositionStatus({
           <Badge
             className={cn(
               'text-xl font-bold px-8 py-3',
-              position === 'OPEN'
-                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                : position === 'HEDGE'
-                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
-                : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
+              getBadgeStyles()
             )}
           >
             {position}
@@ -120,28 +129,6 @@ export default function PositionStatus({
         </CardContent>
       </div>
 
-      {/* Day Indicator Section */}
-      <div className="flex-1 border-b md:border-b-0 md:border-r border-border flex flex-col justify-between">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            Day Indicator
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex justify-center items-center py-4 flex-grow">
-          {day_indicator ? (
-            <GaugeIndicator
-              value={day_indicator.value}
-              min={day_indicator.min}
-              max={day_indicator.max}
-              label={day_indicator.label}
-              size="md"
-              showLabel={false}
-            />
-          ) : (
-            <p className="text-sm text-muted-foreground">No indicator data</p>
-          )}
-        </CardContent>
-      </div>
 
       {/* Audio Player Section */}
       <div className="flex-1 border-b md:border-b-0 md:border-r border-border flex flex-col justify-between">
