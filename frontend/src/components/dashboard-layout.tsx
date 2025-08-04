@@ -5,7 +5,6 @@ import {
   MoonIcon,
   SunIcon,
   LayoutDashboardIcon,
-  HistoryIcon,
   LogOutIcon,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -103,7 +102,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   {!sidebarCollapsed && <span>Dashboard</span>}
                 </Link>
               </Button>
-              <Button
+              {/* <Button
                 variant="ghost"
                 className={cn(
                   'w-full justify-start',
@@ -121,7 +120,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
                   {!sidebarCollapsed && <span>Historical Data</span>}
                 </Link>
-              </Button>
+              </Button> */}
             </nav>
           </div>
 

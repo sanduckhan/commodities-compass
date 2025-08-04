@@ -39,20 +39,29 @@ Commodities Compass is a Business Intelligence application for commodities tradi
 
 ### Backend (FastAPI)
 
-The backend follows a modular FastAPI structure:
+The backend follows a clean architecture with separation of concerns:
 
 - **`app/main.py`** - FastAPI application entry point with CORS, exception handling
 - **`app/core/`** - Core functionality:
   - `config.py` - Pydantic settings with environment variable management
   - `auth.py` - Auth0 JWT token verification and user extraction
   - `database.py` - Async SQLAlchemy setup with PostgreSQL
-- **`app/api/api_v1/`** - API endpoints organized by domain
-- **`app/models/`** - SQLAlchemy database models:
-  - `trading.py` - Core trading models (Technicals, MarketResearch, WeatherData, TestRange)
+  - `excel_mappings.py` - Excel column to database mapping configuration
+- **`app/api/api_v1/`** - Clean API endpoints focused on HTTP concerns
+  - `endpoints/dashboard.py` - Streamlined dashboard endpoints (390 lines)
+- **`app/models/`** - SQLAlchemy database models split by domain:
+  - `technicals.py` - Technical analysis data
+  - `indicator.py` - Normalized indicators and trading signals
+  - `market_research.py` - Market research articles
+  - `weather_data.py` - Weather impact data
+  - `test_range.py` - Indicator color ranges
 - **`app/schemas/`** - Pydantic request/response models for API responses
-- **`app/services/`** - Business logic layer:
+- **`app/services/`** - Business logic layer (service-oriented architecture):
   - `data_import.py` - Excel to PostgreSQL ETL service
-- **`app/core/excel_mappings.py`** - Excel column to database mapping configuration
+  - `dashboard_service.py` - Pure business logic for dashboard operations
+  - `dashboard_transformers.py` - Data transformation between models and API responses
+- **`app/utils/`** - Reusable utility functions:
+  - `date_utils.py` - Date parsing, validation, and business date conversion
 
 ### Frontend (React + TypeScript)
 

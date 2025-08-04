@@ -1,155 +1,73 @@
-from datetime import datetime, date, timedelta
+"""
+Dashboard API endpoints.
+
+Streamlined API layer that focuses on parameter validation, error handling,
+and response formatting. Business logic is delegated to service layer.
+"""
+
+from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, func, extract, and_
 import logging
-import re
 
 from app.core.database import get_db
 from app.core.auth import get_current_user
-from app.models.indicator import Indicator
-from app.models.test_range import TestRange
-from app.models.technicals import Technicals
-from app.models.market_research import MarketResearch
-from app.models.weather_data import WeatherData
 from app.schemas.dashboard import (
     PositionStatusResponse,
-    CommodityIndicator,
-    IndicatorData,
-    IndicatorRange,
     IndicatorsGridResponse,
     RecommendationsResponse,
     NewsResponse,
     WeatherResponse,
     ChartDataResponse,
-    ChartDataPoint,
+)
+from app.services.dashboard_service import (
+    calculate_ytd_performance,
+    get_position_from_indicator,
+    get_indicators_with_ranges,
+    get_latest_recommendations,
+    get_chart_data,
+    get_latest_market_research,
+    get_latest_weather_data,
+)
+from app.services.dashboard_transformers import (
+    transform_to_position_status_response,
+    transform_to_indicators_grid_response,
+    transform_to_recommendations_response,
+    transform_to_chart_data_response,
+    transform_market_research_to_news,
+    transform_weather_data_to_response,
+)
+from app.utils.date_utils import (
+    parse_date_string,
+    get_business_date,
+    log_business_date_conversion,
 )
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-async def calculate_ytd_performance(
-    db: AsyncSession, reference_date: Optional[date] = None
-) -> float:
+def _parse_and_validate_date(date_str: str) -> tuple[datetime.date, datetime.date]:
     """
-    Calculate Year-to-Date performance as the mean average of CONCLUSION values.
+    Parse and validate date string, converting to business date if needed.
 
     Args:
-        db: Database session
-        reference_date: The date to calculate YTD up to (defaults to current date)
+        date_str: Date string in YYYY-MM-DD format
 
     Returns:
-        YTD performance as a percentage
+        Tuple of (parsed_date, business_date)
+
+    Raises:
+        HTTPException: If date format is invalid
     """
-    if reference_date is None:
-        reference_date = date.today()
-
-    # Get the year from the reference date
-    year = reference_date.year
-
-    # Query for all CONCLUSION values since the beginning of the year
-    # Only include dates that have a value in CONCLUSION
-    result = await db.execute(
-        select(func.avg(Technicals.conclusion)).where(
-            and_(
-                extract("year", Technicals.timestamp) == year,
-                func.date(Technicals.timestamp) <= reference_date,
-                Technicals.conclusion.isnot(None),
-            )
-        )
-    )
-
-    avg_conclusion = result.scalar()
-
-    # If no data found, return 0
-    if avg_conclusion is None:
-        return 0.0
-
-    # Convert to percentage (assuming CONCLUSION values are already in decimal form)
-    # If CONCLUSION values are like 0.72 for 72%, multiply by 100
-    return float(avg_conclusion) * 100
-
-
-def get_business_date(target_date: date) -> date:
-    """
-    Convert weekend dates to the previous Friday for market data.
-
-    Markets are closed on weekends, so:
-    - Saturday (weekday 5) -> Previous Friday
-    - Sunday (weekday 6) -> Previous Friday
-    - Weekdays (0-4) -> Return as-is
-
-    Args:
-        target_date: The requested date
-
-    Returns:
-        Business date (previous Friday if weekend, otherwise the same date)
-    """
-    weekday = target_date.weekday()
-
-    if weekday == 5:  # Saturday
-        return target_date - timedelta(days=1)  # Previous Friday
-    elif weekday == 6:  # Sunday
-        return target_date - timedelta(days=2)  # Previous Friday
-    else:
-        return target_date  # Weekday, return as-is
-
-
-async def create_indicator_for_gauge(
-    value: Optional[float], db: AsyncSession, indicator_name: str = "MACROECO"
-) -> Optional[CommodityIndicator]:
-    """
-    Create indicator data for gauge display using raw final_indicator values.
-
-    Args:
-        value: Final indicator value from database (range: -6 to +6)
-        db: Database session
-        indicator_name: Name of the indicator to fetch ranges for
-
-    Returns:
-        CommodityIndicator with raw value and color ranges
-    """
-    if value is None:
-        return None
-
-    # Fetch ranges for this indicator from test_range table
-    result = await db.execute(
-        select(TestRange)
-        .where(TestRange.indicator == indicator_name)
-        .order_by(TestRange.range_low)
-    )
-    test_ranges = result.scalars().all()
-
-    if not test_ranges:
-        raise ValueError(
-            f"No ranges defined for indicator '{indicator_name}' in test_range table"
-        )
-
-    # Convert to IndicatorRange schema objects
-    ranges = [
-        IndicatorRange(
-            range_low=float(tr.range_low),
-            range_high=float(tr.range_high),
-            area=tr.area,
-        )
-        for tr in test_ranges
-    ]
-
-    # Calculate min and max from ranges
-    # Get all range boundaries
-    all_values = []
-    for r in ranges:
-        all_values.extend([r.range_low, r.range_high])
-
-    # Min and max are the extremes of all range values
-    min_value = min(all_values)
-    max_value = max(all_values)
-
-    return CommodityIndicator(
-        value=value, min=min_value, max=max_value, label="DAY INDICATOR", ranges=ranges
-    )
+    try:
+        parsed_date = parse_date_string(date_str)
+        business_date = get_business_date(parsed_date)
+        log_business_date_conversion(parsed_date, business_date)
+        return parsed_date, business_date
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/position-status", response_model=PositionStatusResponse)
@@ -161,10 +79,10 @@ async def get_position_status(
     db: AsyncSession = Depends(get_db),
 ) -> PositionStatusResponse:
     """
-    Get current position status and day indicator.
+    Get current position status and YTD performance.
 
-    Returns the latest trading position (OPEN/HEDGE/MONITOR) and normalized
-    day indicator value for gauge display.
+    Returns the latest trading position (OPEN/HEDGE/MONITOR) and
+    year-to-date performance percentage.
 
     Args:
         target_date: Optional specific date. If not provided, returns latest data.
@@ -172,66 +90,50 @@ async def get_position_status(
         db: Database session
 
     Returns:
-        Current position status and day indicator data
+        Position status and YTD performance data
 
     Raises:
-        HTTPException: If no data found
+        HTTPException: If data not found or date format invalid
     """
-    # Build query for latest indicator data
-    query = select(Indicator).order_by(desc(Indicator.date))
+    try:
+        # Parse and validate date if provided
+        business_date = None
+        if target_date:
+            _, business_date = _parse_and_validate_date(target_date)
 
-    if target_date:
-        try:
-            # Parse the date string to date object
-            parsed_date = datetime.strptime(target_date, "%Y-%m-%d").date()
+        # Get position and YTD performance from service layer
+        position = await get_position_from_indicator(db, business_date)
+        ytd_performance = await calculate_ytd_performance(db, business_date)
 
-            # Convert weekend dates to previous Friday (markets are closed on weekends)
-            business_date = get_business_date(parsed_date)
+        # Use business_date for response, or current date if not provided
+        response_date = business_date or datetime.now().date()
 
-            # Log the conversion if weekend date was requested
-            if business_date != parsed_date:
-                logger.info(
-                    f"Weekend date {parsed_date} converted to business date {business_date}"
-                )
+        return transform_to_position_status_response(
+            position=position,
+            ytd_performance=ytd_performance,
+            response_date=response_date,
+        )
 
-            query = query.where(Indicator.date == business_date)
-        except ValueError:
-            raise HTTPException(
-                status_code=400, detail="Invalid date format. Use YYYY-MM-DD format."
-            )
-
-    # Get the most recent indicator record
-    result = await db.execute(query)
-    indicator = result.scalars().first()
-
-    if not indicator:
-        raise HTTPException(status_code=404, detail="No indicator data found")
-
-    # Calculate YTD performance up to the indicator date
-    ytd_performance = await calculate_ytd_performance(db, indicator.date)
-
-    response = PositionStatusResponse(
-        date=indicator.date,
-        position=indicator.conclusion or "MONITOR",  # Default to MONITOR if None
-        ytd_performance=ytd_performance,
-    )
-
-    return response
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error getting position status: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/indicators-grid", response_model=IndicatorsGridResponse)
 async def get_indicators_grid(
     target_date: Optional[str] = Query(
-        default=None,
-        description="Specific date for indicators data (YYYY-MM-DD format)",
+        default=None, description="Specific date for indicators (YYYY-MM-DD format)"
     ),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> IndicatorsGridResponse:
     """
-    Get all indicators for the grid display.
+    Get all indicators with their ranges for gauge display.
 
-    Returns indicator values with their ranges from the test_range table.
+    Returns normalized indicator values with color ranges for
+    the trading dashboard gauge components.
 
     Args:
         target_date: Optional specific date. If not provided, returns latest data.
@@ -239,63 +141,36 @@ async def get_indicators_grid(
         db: Database session
 
     Returns:
-        All indicators with their current values and color ranges
+        All indicators with ranges and values
 
     Raises:
-        HTTPException: If no data found
+        HTTPException: If data not found or date format invalid
     """
-    # Build query for latest indicator data
-    query = select(Indicator).order_by(desc(Indicator.date))
+    try:
+        # Parse and validate date if provided
+        business_date = None
+        if target_date:
+            _, business_date = _parse_and_validate_date(target_date)
 
-    if target_date:
-        try:
-            # Parse the date string to date object
-            parsed_date = datetime.strptime(target_date, "%Y-%m-%d").date()
+        # Get indicators data from service layer
+        indicators_data = await get_indicators_with_ranges(db, business_date)
 
-            # Convert weekend dates to previous Friday (markets are closed on weekends)
-            business_date = get_business_date(parsed_date)
+        if not indicators_data:
+            raise HTTPException(status_code=404, detail="No indicators data found")
 
-            # Log the conversion if weekend date was requested
-            if business_date != parsed_date:
-                logger.info(
-                    f"Weekend date {parsed_date} converted to business date {business_date}"
-                )
+        # Use business_date for response, or current date if not provided
+        response_date = business_date or datetime.now().date()
 
-            query = query.where(Indicator.date == business_date)
-        except ValueError:
-            raise HTTPException(
-                status_code=400, detail="Invalid date format. Use YYYY-MM-DD format."
-            )
+        return transform_to_indicators_grid_response(
+            indicators_data=indicators_data,
+            response_date=response_date,
+        )
 
-    # Get the most recent indicator record
-    result = await db.execute(query)
-    indicator = result.scalars().first()
-
-    if not indicator:
-        raise HTTPException(status_code=404, detail="No indicator data found")
-
-    # Create indicators for each metric
-    indicators = {}
-
-    # Map of indicator names to their database fields and display labels
-    indicator_configs = [
-        ("macroeco", indicator.macroeco_score, "MACROECO", "MACROECO"),
-        ("rsi", indicator.rsi_norm, "RSI", "RSI"),
-        ("macd", indicator.macd_norm, "MACD", "MACD"),
-        ("percentK", indicator.stoch_k_norm, "%K", "%K"),
-        ("atr", indicator.atr_norm, "ATR", "ATR"),
-        ("volOi", indicator.vol_oi_norm, "VOL/OI", "VOL_OI"),
-    ]
-
-    for key, value, label, range_indicator_name in indicator_configs:
-        if value is not None:
-            indicators[key] = await create_indicator_for_gauge(
-                float(value), db=db, indicator_name=range_indicator_name
-            )
-            # Override the label to match frontend expectations
-            indicators[key].label = label
-
-    return IndicatorsGridResponse(date=indicator.date, indicators=indicators)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error getting indicators grid: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/recommendations", response_model=RecommendationsResponse)
@@ -308,7 +183,10 @@ async def get_recommendations(
     db: AsyncSession = Depends(get_db),
 ) -> RecommendationsResponse:
     """
-    Get recommendations based on the score from technicals table.
+    Get recommendations parsed from technicals score data.
+
+    Returns a list of trading recommendations extracted and parsed
+    from the score column in the technicals table.
 
     Args:
         target_date: Optional specific date. If not provided, returns latest data.
@@ -316,74 +194,43 @@ async def get_recommendations(
         db: Database session
 
     Returns:
-        Score value from technicals table
+        Parsed recommendations list
 
     Raises:
-        HTTPException: If no data found
+        HTTPException: If data not found or date format invalid
     """
-    # Build query for latest technicals data
-    query = select(Technicals).order_by(desc(Technicals.timestamp))
+    try:
+        # Parse and validate date if provided
+        business_date = None
+        if target_date:
+            _, business_date = _parse_and_validate_date(target_date)
 
-    if target_date:
-        try:
-            # Parse the date string to date object
-            parsed_date = datetime.strptime(target_date, "%Y-%m-%d").date()
+        # Get recommendations from service layer
+        recommendations, raw_score, rec_date = await get_latest_recommendations(
+            db, business_date
+        )
 
-            # Convert weekend dates to previous Friday (markets are closed on weekends)
-            business_date = get_business_date(parsed_date)
+        if not recommendations and not raw_score:
+            raise HTTPException(status_code=404, detail="No recommendations data found")
 
-            # Log the conversion if weekend date was requested
-            if business_date != parsed_date:
-                logger.info(
-                    f"Weekend date {parsed_date} converted to business date {business_date}"
-                )
+        # Use actual date from data, or business_date, or current date
+        response_date = rec_date or business_date or datetime.now().date()
 
-            query = query.where(func.date(Technicals.timestamp) == business_date)
-        except ValueError:
-            raise HTTPException(
-                status_code=400, detail="Invalid date format. Use YYYY-MM-DD format."
-            )
+        return transform_to_recommendations_response(
+            recommendations=recommendations,
+            raw_score=raw_score,
+            response_date=response_date,
+        )
 
-    # Get the most recent technicals record
-    result = await db.execute(query)
-    technical = result.scalars().first()
-
-    if not technical:
-        raise HTTPException(status_code=404, detail="No technical data found")
-
-    # Parse recommendations from the score text
-    recommendations = []
-    if technical.score:
-        # The score column contains bullet points and sections
-        raw_text = technical.score.strip()
-
-        # Split by lines first, then process each line
-        lines = raw_text.split("\n")
-
-        for line in lines:
-            cleaned = line.strip()
-
-            # Skip empty lines and very short fragments
-            if not cleaned or len(cleaned) < 10:
-                continue
-
-            # Remove leading bullet points, tabs, and extra spaces
-            # Handle various bullet point formats: •, -, *, etc.
-            cleaned = re.sub(r"^[\s\t]*[•\-\*]\s*", "", cleaned)
-            cleaned = re.sub(r"^\s+", "", cleaned)  # Remove leading whitespace
-
-            if cleaned and len(cleaned) > 10:  # Only keep substantial content
-                recommendations.append(cleaned)
-
-    return RecommendationsResponse(
-        date=technical.timestamp,
-        recommendations=recommendations,
-        raw_score=technical.score,
-    )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error getting recommendations: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/chart-data", response_model=ChartDataResponse)
-async def get_chart_data(
+async def get_chart_data_endpoint(
     days: int = Query(
         default=30, ge=1, le=365, description="Number of days of historical data"
     ),
@@ -391,143 +238,147 @@ async def get_chart_data(
     db: AsyncSession = Depends(get_db),
 ) -> ChartDataResponse:
     """
-    Get historical chart data from technicals table.
+    Get historical chart data for the specified number of days.
+
+    Returns time series data for charting with configurable
+    time range from 1 to 365 days.
 
     Args:
-        days: Number of days of historical data to fetch (1-365)
+        days: Number of days of historical data (1-365)
         current_user: Authenticated user
         db: Database session
 
     Returns:
-        Historical data points for chart display
+        Historical chart data points
 
     Raises:
-        HTTPException: If no data found
+        HTTPException: If data not found or parameters invalid
     """
-    # Calculate the start date based on requested days
-    end_date = date.today()
-    start_date = end_date - timedelta(days=days)
+    try:
+        # Get chart data from service layer
+        chart_data = await get_chart_data(db, days)
 
-    # Query for historical technicals data
-    query = (
-        select(Technicals)
-        .where(
-            and_(
-                func.date(Technicals.timestamp) >= start_date,
-                func.date(Technicals.timestamp) <= end_date,
-            )
-        )
-        .order_by(Technicals.timestamp)
-    )
+        if not chart_data:
+            raise HTTPException(status_code=404, detail="No chart data found")
 
-    result = await db.execute(query)
-    technicals = result.scalars().all()
+        return transform_to_chart_data_response(chart_data)
 
-    if not technicals:
-        raise HTTPException(status_code=404, detail="No technical data found")
-
-    # Convert to chart data points
-    chart_data = []
-    for tech in technicals:
-        chart_data.append(
-            ChartDataPoint(
-                date=tech.timestamp.strftime("%Y-%m-%d"),
-                close=float(tech.close) if tech.close else None,
-                volume=float(tech.volume) if tech.volume else None,
-                open_interest=float(tech.open_interest) if tech.open_interest else None,
-                rsi_14d=float(tech.rsi_14d) if tech.rsi_14d else None,
-                macd=float(tech.macd) if tech.macd else None,
-                stock_us=float(tech.stock_us) if tech.stock_us else None,
-                com_net_us=float(tech.com_net_us) if tech.com_net_us else None,
-            )
-        )
-
-    return ChartDataResponse(data=chart_data)
+    except Exception as e:
+        logger.error(f"Error getting chart data: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.get("/latest-indicator", response_model=IndicatorData)
-async def get_latest_indicator(
-    current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)
-) -> IndicatorData:
-    """
-    Get the latest indicator data.
-
-    Returns raw indicator data from the database for debugging or detailed views.
-
-    Args:
-        current_user: Authenticated user
-        db: Database session
-
-    Returns:
-        Latest indicator record
-
-    Raises:
-        HTTPException: If no data found
-    """
-    result = await db.execute(select(Indicator).order_by(desc(Indicator.date)).limit(1))
-    indicator = result.scalars().first()
-
-    if not indicator:
-        raise HTTPException(status_code=404, detail="No indicator data found")
-
-    return IndicatorData.model_validate(indicator)
-
-
-@router.get("/")
-async def get_dashboard_data(
-    target_date: Optional[date] = Query(
-        default=None, description="Date for dashboard data"
+@router.get("/news", response_model=NewsResponse)
+async def get_news(
+    target_date: Optional[str] = Query(
+        default=None, description="Specific date for news (YYYY-MM-DD format)"
     ),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
-    """Get dashboard data for a specific date"""
-    if not target_date:
-        target_date = date.today()
+) -> NewsResponse:
+    """
+    Get the latest news from market research data.
 
-    # TODO: Implement database queries to fetch real data
-    # For now, return mock data structure
-    return {
-        "date": target_date.isoformat(),
-        "positionOfDay": "OPEN",
-        "ytdPerformance": 72.12,
-        "indicators": {
-            "dayIndicator": {
-                "value": 2.22,
-                "min": 0,
-                "max": 3,
-                "label": "DAY INDICATOR",
-            },
-            "macroeco": {"value": 1.1, "min": 0, "max": 3, "label": "DAY MACROECO"},
-            "rsi": {"value": 0.59, "min": 0, "max": 3, "label": "DAY RSI"},
-            "macd": {"value": 1.11, "min": 0, "max": 3, "label": "DAY MACD"},
-            "percentK": {"value": 0.08, "min": 0, "max": 3, "label": "DAY %K"},
-            "atr": {"value": -0.39, "min": -3, "max": 3, "label": "DAY ATR"},
-            "volOi": {"value": 0.11, "min": 0, "max": 3, "label": "DAY VOL/OI"},
-        },
-        "recommendations": [
-            {
-                "id": 1,
-                "text": "Market analysis placeholder - will be generated from real data",
-            }
-        ],
-        "lastPress": {
-            "id": 1,
-            "date": target_date.isoformat(),
-            "author": "System",
-            "title": "Latest market news will appear here",
-            "content": "News content placeholder",
-        },
-        "weatherUpdates": [
-            {
-                "id": 1,
-                "date": target_date.isoformat(),
-                "region": "West Africa",
-                "description": "Weather data will be integrated",
-                "impact": "Impact analysis placeholder",
-            }
-        ],
-    }
+    Returns the most recent market research article with
+    title and content for news display.
+
+    Args:
+        target_date: Optional specific date. If not provided, returns latest data.
+        current_user: Authenticated user
+        db: Database session
+
+    Returns:
+        Latest news article data
+
+    Raises:
+        HTTPException: If data not found or date format invalid
+    """
+    try:
+        # Parse and validate date if provided
+        business_date = None
+        if target_date:
+            _, business_date = _parse_and_validate_date(target_date)
+
+        # Get market research from service layer
+        market_research = await get_latest_market_research(db, business_date)
+
+        if not market_research:
+            raise HTTPException(status_code=404, detail="No news data found")
+
+        return transform_market_research_to_news(market_research)
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error getting news: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/weather", response_model=WeatherResponse)
+async def get_weather(
+    target_date: Optional[str] = Query(
+        default=None, description="Specific date for weather data (YYYY-MM-DD format)"
+    ),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> WeatherResponse:
+    """
+    Get the latest weather update from weather data.
+
+    Returns the most recent weather information with
+    conditions and market impact assessment.
+
+    Args:
+        target_date: Optional specific date. If not provided, returns latest data.
+        current_user: Authenticated user
+        db: Database session
+
+    Returns:
+        Latest weather update data
+
+    Raises:
+        HTTPException: If data not found or date format invalid
+    """
+    try:
+        # Parse and validate date if provided
+        business_date = None
+        if target_date:
+            _, business_date = _parse_and_validate_date(target_date)
+
+        # Get weather data from service layer
+        weather_data = await get_latest_weather_data(db, business_date)
+
+        if not weather_data:
+            raise HTTPException(status_code=404, detail="No weather data found")
+
+        return transform_weather_data_to_response(weather_data)
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error getting weather data: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+# Legacy endpoints for backward compatibility
+@router.get("/latest-indicator")
+async def get_latest_indicator(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get latest indicator data (legacy endpoint)."""
+    # TODO: Implement or deprecate
+    return {"message": "Legacy endpoint - use /indicators-grid instead"}
+
+
+@router.get("/dashboard-data")
+async def get_dashboard_data(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get dashboard data (legacy endpoint)."""
+    # TODO: Implement or deprecate
+    return {"message": "Legacy endpoint - use specific endpoints instead"}
 
 
 @router.get("/summary")
@@ -535,134 +386,11 @@ async def get_dashboard_summary(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get quick summary for dashboard"""
-    # TODO: Implement database query
+    """Get quick summary for dashboard (legacy endpoint)."""
+    # TODO: Implement or deprecate
     return {
         "lastUpdate": datetime.utcnow().isoformat(),
         "activePositions": 1,
         "totalCommodities": 1,
         "alerts": [],
     }
-
-
-@router.get("/news", response_model=NewsResponse)
-async def get_news(
-    target_date: Optional[str] = Query(
-        default=None,
-        description="Specific date for news (YYYY-MM-DD format)",
-    ),
-    current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-) -> NewsResponse:
-    """
-    Get the latest news from market research table.
-
-    Args:
-        target_date: Optional specific date. If not provided, returns latest data.
-        current_user: Authenticated user
-        db: Database session
-
-    Returns:
-        News data from market research table
-
-    Raises:
-        HTTPException: If no data found
-    """
-    # Build query for latest market research data
-    query = select(MarketResearch).order_by(desc(MarketResearch.date))
-
-    if target_date:
-        try:
-            # Parse the date string to date object
-            parsed_date = datetime.strptime(target_date, "%Y-%m-%d").date()
-
-            # Convert weekend dates to previous Friday (markets are closed on weekends)
-            business_date = get_business_date(parsed_date)
-
-            # Log the conversion if weekend date was requested
-            if business_date != parsed_date:
-                logger.info(
-                    f"Weekend date {parsed_date} converted to business date {business_date}"
-                )
-
-            query = query.where(func.date(MarketResearch.date) == business_date)
-        except ValueError:
-            raise HTTPException(
-                status_code=400, detail="Invalid date format. Use YYYY-MM-DD format."
-            )
-
-    # Get the most recent market research record
-    result = await db.execute(query)
-    news = result.scalars().first()
-
-    if not news:
-        raise HTTPException(status_code=404, detail="No news data found")
-
-    # Format the response using impact_synthesis as title and summary as content
-    return NewsResponse(
-        date=news.date.strftime("%B %d, %Y"),
-        title=news.impact_synthesis or "Market Research Update",
-        content=news.summary or "No summary available",
-        author=news.author or "Market Research Team",
-    )
-
-
-@router.get("/weather", response_model=WeatherResponse)
-async def get_weather(
-    target_date: Optional[str] = Query(
-        default=None,
-        description="Specific date for weather data (YYYY-MM-DD format)",
-    ),
-    current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-) -> WeatherResponse:
-    """
-    Get the latest weather update from weather_data table.
-
-    Args:
-        target_date: Optional specific date. If not provided, returns latest data.
-        current_user: Authenticated user
-        db: Database session
-
-    Returns:
-        Weather data from weather_data table
-
-    Raises:
-        HTTPException: If no data found
-    """
-    # Build query for latest weather data
-    query = select(WeatherData).order_by(desc(WeatherData.date))
-
-    if target_date:
-        try:
-            # Parse the date string to date object
-            parsed_date = datetime.strptime(target_date, "%Y-%m-%d").date()
-
-            # Convert weekend dates to previous Friday (markets are closed on weekends)
-            business_date = get_business_date(parsed_date)
-
-            # Log the conversion if weekend date was requested
-            if business_date != parsed_date:
-                logger.info(
-                    f"Weekend date {parsed_date} converted to business date {business_date}"
-                )
-
-            query = query.where(func.date(WeatherData.date) == business_date)
-        except ValueError:
-            raise HTTPException(
-                status_code=400, detail="Invalid date format. Use YYYY-MM-DD format."
-            )
-
-    # Get the most recent weather data record
-    result = await db.execute(query)
-    weather = result.scalars().first()
-
-    if not weather:
-        raise HTTPException(status_code=404, detail="No weather data found")
-
-    # Format the response using summary as description and impact_synthesis as impact
-    return WeatherResponse(
-        date=weather.date.strftime("%B %d, %Y"),
-        description=weather.summary or "No weather description available",
-        impact=weather.impact_synthesis or "No market impact assessment available",
-    )

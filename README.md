@@ -86,18 +86,32 @@ npm run dev:frontend
 
 ```
 commodities-compass/
-├── backend/                # FastAPI backend
+├── backend/                # FastAPI backend with clean architecture
 │   ├── app/               # Application code
+│   │   ├── api/           # API endpoints (HTTP layer only)
+│   │   │   └── api_v1/endpoints/dashboard.py # Streamlined endpoints (390 lines)
 │   │   ├── core/          # Core functionality & mappings
 │   │   ├── models/        # SQLAlchemy database models
-│   │   ├── services/      # Business logic (ETL, etc.)
-│   │   └── api/           # API endpoints
+│   │   │   ├── trading.py # Core trading models
+│   │   │   ├── indicator.py # Indicator model
+│   │   │   └── ... # Other domain models
+│   │   ├── services/      # Business logic layer
+│   │   │   ├── dashboard_service.py # Dashboard business logic (326 lines)
+│   │   │   ├── dashboard_transformers.py # Data transformers (192 lines)
+│   │   │   └── data_import.py # Excel ETL service
+│   │   ├── schemas/       # Pydantic API schemas
+│   │   └── utils/         # Utility functions
+│   │       └── date_utils.py # Date utilities (99 lines)
 │   ├── tests/             # Backend tests
 │   ├── scripts/           # Data import and utility scripts
 │   ├── alembic/           # Database migrations
 │   └── pyproject.toml     # Python dependencies and config
 ├── frontend/              # React frontend
 │   ├── src/               # Source code
+│   │   ├── components/    # Reusable UI components
+│   │   ├── pages/         # Page components
+│   │   ├── api/           # API client layer
+│   │   └── hooks/         # Custom React hooks
 │   ├── public/            # Static assets
 │   └── package.json       # Frontend dependencies
 ├── static-react-app/      # Original static prototype (reference)
@@ -110,13 +124,14 @@ commodities-compass/
 
 ### Backend
 
-- **FastAPI** - Modern Python web framework
-- **SQLAlchemy** - ORM with async support
-- **PostgreSQL** - Primary database with custom schema for trading data
-- **Auth0** - Authentication
+- **FastAPI** - Modern Python web framework with clean architecture
+- **SQLAlchemy** - Async ORM with custom trading data models
+- **PostgreSQL** - Primary database (port 5433) with comprehensive trading schema
+- **Auth0** - JWT authentication and authorization
 - **Pandas** - Data processing and ETL pipeline
-- **Google Sheets API** - Data ingestion
-- **Alembic** - Database migrations
+- **Google Sheets API** - Data ingestion (transitioning to PostgreSQL)
+- **Alembic** - Database migrations and schema management
+- **Service Layer** - Separation of business logic from API concerns
 
 ### Frontend
 
@@ -148,12 +163,33 @@ Once the backend is running, visit:
 2. Configure the environment variables in both backend and frontend `.env` files
 3. Set up the appropriate callback URLs in Auth0
 
+## Architecture Highlights
+
+### Clean Architecture Implementation
+
+The backend follows a clean architecture pattern for maintainability:
+
+- **API Layer** (`dashboard.py`): HTTP concerns only - validation, error handling, delegation
+- **Service Layer** (`dashboard_service.py`): Pure business logic, database-agnostic
+- **Data Layer** (`models/`): SQLAlchemy models for trading data
+- **Transformers** (`dashboard_transformers.py`): Data mapping between layers
+- **Utilities** (`utils/`): Reusable functions (date handling, formatting)
+
+### Refactoring Results
+
+- Dashboard endpoints reduced from **668 to 390 lines** (42% reduction)
+- Business logic extracted to **326-line service module**
+- Data transformations isolated in **192-line transformer module**
+- Date utilities centralized in **99-line utility module**
+- Improved testability and code reusability
+
 ## Contributing
 
 1. Install pre-commit hooks: `cd backend && poetry run pre-commit install`
 2. Make sure all tests pass: `npm run test`
 3. Ensure code is properly formatted: `npm run format`
 4. Run linting: `npm run lint`
+5. Follow clean architecture principles when adding new features
 
 ## License
 
