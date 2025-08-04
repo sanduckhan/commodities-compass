@@ -30,3 +30,18 @@ export interface RecommendationsResponse {
   recommendations: string[];
   raw_score: string | null;
 }
+
+export interface ChartDataPoint {
+  date: string;
+  close?: number | null;
+  volume?: number | null;
+  open_interest?: number | null;
+  rsi_14d?: number | null;
+  macd?: number | null;
+  stock_us?: number | null;
+  com_net_us?: number | null;
+}
+
+export interface ChartDataResponse {
+  data: ChartDataPoint[];
+}

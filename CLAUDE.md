@@ -48,8 +48,8 @@ The backend follows a modular FastAPI structure:
   - `database.py` - Async SQLAlchemy setup with PostgreSQL
 - **`app/api/api_v1/`** - API endpoints organized by domain
 - **`app/models/`** - SQLAlchemy database models:
-  - `trading.py` - Core trading models (Technicals, Indicator, MarketResearch, etc.)
-- **`app/schemas/`** - Pydantic request/response models (to be created)
+  - `trading.py` - Core trading models (Technicals, MarketResearch, WeatherData, TestRange)
+- **`app/schemas/`** - Pydantic request/response models for API responses
 - **`app/services/`** - Business logic layer:
   - `data_import.py` - Excel to PostgreSQL ETL service
 - **`app/core/excel_mappings.py`** - Excel column to database mapping configuration
@@ -63,6 +63,11 @@ The frontend uses modern React patterns:
 - **State Management** - React Query (TanStack Query) for server state
 - **Routing** - React Router with protected routes requiring authentication
 - **UI Components** - Shadcn/ui components in `src/components/ui/`
+- **Dashboard Components**:
+  - `PositionStatus` - YTD performance with color-coded position badges
+  - `IndicatorsGrid` - Dynamic gauge indicators with color ranges
+  - `RecommendationsList` - Parsed recommendations from database
+  - `PriceChart` - Interactive chart with metric selection
 - **Legacy Components** - Existing UI in `src/polymet/` (to be migrated)
 
 ### Environment Configuration
@@ -100,9 +105,7 @@ The application transitions from Google Sheets to PostgreSQL:
    - **Indicator**: Normalized indicators and trading signals
    - **MarketResearch**: Research articles and market impact analysis
    - **WeatherData**: Agricultural weather data affecting commodity prices
-   - **Config**: Trading algorithm configuration parameters
-   - **PerformanceTracking**: Strategy performance metrics
-   - **Podcast**: Aggregated market commentary
+   - **TestRange**: Color ranges and thresholds for indicator visualization
 4. Excel to database column mapping defined in `app/core/excel_mappings.py`
 
 ## Code Quality
@@ -117,7 +120,11 @@ The application transitions from Google Sheets to PostgreSQL:
 All API endpoints are prefixed with `/v1` and include:
 
 - `/auth/*` - Authentication endpoints
-- `/dashboard/*` - Trading dashboard data
+- `/dashboard/*` - Trading dashboard data:
+  - `/dashboard/position-status` - YTD performance and position of the day
+  - `/dashboard/indicators-grid` - All indicators with dynamic ranges
+  - `/dashboard/recommendations` - Parsed recommendations from technicals.score
+  - `/dashboard/chart-data` - Historical data for charting
 - `/commodities/*` - Commodity information
 - `/historical/*` - Historical data and indicators
 

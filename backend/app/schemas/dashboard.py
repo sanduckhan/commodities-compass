@@ -100,3 +100,31 @@ class RecommendationsResponse(BaseModel):
 
     class Config:
         json_encoders = {datetime: lambda v: v.isoformat()}
+
+
+class ChartDataPoint(BaseModel):
+    """
+    Single data point for chart display.
+    """
+
+    date: str = Field(..., description="Date in YYYY-MM-DD format")
+    close: Optional[float] = Field(None, description="Close price")
+    volume: Optional[float] = Field(None, description="Volume")
+    open_interest: Optional[float] = Field(None, description="Open interest")
+    rsi_14d: Optional[float] = Field(None, description="RSI 14-day")
+    macd: Optional[float] = Field(None, description="MACD")
+    stock_us: Optional[float] = Field(None, description="US stock levels")
+    com_net_us: Optional[float] = Field(None, description="Commercial net US")
+
+
+class ChartDataResponse(BaseModel):
+    """
+    Response schema for chart data endpoint.
+
+    Contains historical data from technicals table.
+    """
+
+    data: List[ChartDataPoint] = Field(..., description="Historical chart data points")
+
+    class Config:
+        json_encoders = {datetime: lambda v: v.isoformat()}

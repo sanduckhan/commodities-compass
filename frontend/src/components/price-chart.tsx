@@ -7,9 +7,8 @@ import {
 } from '@/components/ui/chart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
-import { DatePickerWithRange } from '@/components/date-range-picker';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, ZoomInIcon, ZoomOutIcon } from 'lucide-react';
+import { ZoomInIcon, ZoomOutIcon, Loader2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import {
   Select,
@@ -19,36 +18,29 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { METRIC_OPTIONS } from '@/data/commodities-data';
+import { useChartData } from '@/hooks/useDashboard';
+import { cn } from '@/utils';
 
 interface PriceChartProps {
-  data: Array<{
-    date: string;
-    price: number;
-    volume: number;
-    rsi: number;
-    stockUs: number;
-    stockEu: number;
-    atr: number;
-    openInterest: number;
-    macd: number;
-    pivot: number;
-  }>;
   title?: string;
-  showDateRange?: boolean;
   selectedMetric?: string;
   onMetricChange?: (metric: string) => void;
+  className?: string;
 }
 
 export default function PriceChart({
-  data,
   title = 'Price Chart',
-  showDateRange = true,
-  selectedMetric = 'price',
+  selectedMetric = 'close',
   onMetricChange,
+  className,
 }: PriceChartProps) {
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [days, setDays] = useState(30);
 
-  // Find the selected metric configuration
+  // Fetch chart data from API
+  const { data: chartResponse, isLoading, error } = useChartData(days);
+
+  // Find the selected metric configuration - must be called before any conditional returns
   const metricConfig = useMemo(() => {
     return (
       METRIC_OPTIONS.find((option) => option.value === selectedMetric) ||
@@ -56,14 +48,11 @@ export default function PriceChart({
     );
   }, [selectedMetric]);
 
-  // Format date for display
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
-
-  // Adjust data points based on zoom level
+  // Adjust data points based on zoom level - must be called before any conditional returns
   const visibleData = useMemo(() => {
+    if (!chartResponse?.data) return [];
+    
+    const data = chartResponse.data;
     if (zoomLevel === 1) return data;
 
     const dataLength = data.length;
@@ -71,7 +60,38 @@ export default function PriceChart({
     const startIndex = Math.max(0, dataLength - visiblePoints);
 
     return data.slice(startIndex);
-  }, [data, zoomLevel]);
+  }, [chartResponse?.data, zoomLevel]);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <Card className={cn("flex items-center justify-center h-[400px]", className)}>
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </Card>
+    );
+  }
+
+  // Show error state
+  if (error || !chartResponse?.data) {
+    return (
+      <Card className={cn("flex items-center justify-center h-[400px]", className)}>
+        <div className="text-center space-y-2">
+          <p className="text-sm text-muted-foreground">Unable to load chart data</p>
+          {error && (
+            <p className="text-xs text-red-500">
+              Error: {error.message || 'Unknown error'}
+            </p>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  // Format date for display
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
 
   // Handle metric change
   const handleMetricChange = (value: string) => {
@@ -80,8 +100,13 @@ export default function PriceChart({
     }
   };
 
+  // Handle days change
+  const handleDaysChange = (value: string) => {
+    setDays(parseInt(value));
+  };
+
   return (
-    <Card className="w-full">
+    <Card className={cn("w-full", className)}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg font-medium">{title}</CardTitle>
 
@@ -89,7 +114,7 @@ export default function PriceChart({
           <Select
             value={selectedMetric}
             onValueChange={handleMetricChange}
-            defaultValue="price"
+            defaultValue="close"
           >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select metric" />
@@ -103,12 +128,23 @@ export default function PriceChart({
             </SelectContent>
           </Select>
 
+          <Select
+            value={days.toString()}
+            onValueChange={handleDaysChange}
+          >
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Days" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">7 days</SelectItem>
+              <SelectItem value="30">30 days</SelectItem>
+              <SelectItem value="90">90 days</SelectItem>
+              <SelectItem value="180">180 days</SelectItem>
+              <SelectItem value="365">1 year</SelectItem>
+            </SelectContent>
+          </Select>
+
           <div className="flex items-center gap-2">
-            {showDateRange && (
-              <div className="hidden md:block">
-                <DatePickerWithRange />
-              </div>
-            )}
 
             <div className="flex items-center gap-1">
               <Button
@@ -127,11 +163,6 @@ export default function PriceChart({
               >
                 <ZoomInIcon className="h-4 w-4" />
               </Button>
-              {showDateRange && (
-                <Button variant="outline" size="icon" className="md:hidden">
-                  <CalendarIcon className="h-4 w-4" />
-                </Button>
-              )}
             </div>
           </div>
         </div>

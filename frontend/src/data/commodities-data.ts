@@ -466,9 +466,9 @@ export const HISTORICAL_DATA: DashboardData[] = [
 // Define metric options and their display configurations
 export const METRIC_OPTIONS = [
   {
-    value: "price",
+    value: "close",
     label: "CLOSE",
-    dataKey: "price",
+    dataKey: "close",
     color: "hsl(var(--chart-1))",
   },
   {
@@ -477,36 +477,34 @@ export const METRIC_OPTIONS = [
     dataKey: "volume",
     color: "hsl(var(--chart-2))",
   },
-  { value: "rsi", label: "RSI", dataKey: "rsi", color: "hsl(var(--chart-3))" },
+  { 
+    value: "rsi_14d", 
+    label: "RSI", 
+    dataKey: "rsi_14d", 
+    color: "hsl(var(--chart-3))" 
+  },
   {
-    value: "stockUs",
+    value: "stock_us",
     label: "STOCK US",
-    dataKey: "stockUs",
+    dataKey: "stock_us",
     color: "hsl(var(--chart-4))",
   },
   {
-    value: "stockEu",
-    label: "STOCK EU",
-    dataKey: "stockEu",
-    color: "hsl(var(--chart-5))",
-  },
-  { value: "atr", label: "ATR", dataKey: "atr", color: "hsl(var(--chart-1))" },
-  {
-    value: "openInterest",
+    value: "open_interest",
     label: "OPEN INTEREST",
-    dataKey: "openInterest",
-    color: "hsl(var(--chart-2))",
+    dataKey: "open_interest",
+    color: "hsl(var(--chart-5))",
   },
   {
     value: "macd",
     label: "MACD",
     dataKey: "macd",
-    color: "hsl(var(--chart-3))",
+    color: "hsl(var(--chart-1))",
   },
   {
-    value: "pivot",
-    label: "Pivot",
-    dataKey: "pivot",
-    color: "hsl(var(--chart-4))",
+    value: "com_net_us",
+    label: "COM NET US",
+    dataKey: "com_net_us",
+    color: "hsl(var(--chart-2))",
   },
 ];

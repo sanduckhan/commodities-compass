@@ -30,7 +30,7 @@ export default function DashboardPage() {
     day: 'numeric' 
   });
   const [currentDate, setCurrentDate] = useState(today);
-  const [selectedMetric, setSelectedMetric] = useState("price");
+  const [selectedMetric, setSelectedMetric] = useState("close");
 
   // Get the data for the selected date
   const currentData =
@@ -71,7 +71,6 @@ export default function DashboardPage() {
 
       <div>
         <PriceChart
-          data={currentData.chartData}
           title={`${metricConfig.label} Trend`}
           selectedMetric={selectedMetric}
           onMetricChange={setSelectedMetric}

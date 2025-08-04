@@ -18,6 +18,8 @@ from app.schemas.dashboard import (
     IndicatorRange,
     IndicatorsGridResponse,
     RecommendationsResponse,
+    ChartDataResponse,
+    ChartDataPoint,
 )
 
 router = APIRouter()
@@ -374,6 +376,69 @@ async def get_recommendations(
         recommendations=recommendations,
         raw_score=technical.score,
     )
+
+
+@router.get("/chart-data", response_model=ChartDataResponse)
+async def get_chart_data(
+    days: int = Query(
+        default=30, ge=1, le=365, description="Number of days of historical data"
+    ),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ChartDataResponse:
+    """
+    Get historical chart data from technicals table.
+
+    Args:
+        days: Number of days of historical data to fetch (1-365)
+        current_user: Authenticated user
+        db: Database session
+
+    Returns:
+        Historical data points for chart display
+
+    Raises:
+        HTTPException: If no data found
+    """
+    # Calculate the start date based on requested days
+    end_date = date.today()
+    start_date = end_date - timedelta(days=days)
+
+    # Query for historical technicals data
+    query = (
+        select(Technicals)
+        .where(
+            and_(
+                func.date(Technicals.timestamp) >= start_date,
+                func.date(Technicals.timestamp) <= end_date,
+            )
+        )
+        .order_by(Technicals.timestamp)
+    )
+
+    result = await db.execute(query)
+    technicals = result.scalars().all()
+
+    if not technicals:
+        raise HTTPException(status_code=404, detail="No technical data found")
+
+    # Convert to chart data points
+    chart_data = []
+    for tech in technicals:
+        chart_data.append(
+            ChartDataPoint(
+                date=tech.timestamp.strftime("%Y-%m-%d"),
+                close=float(tech.close) if tech.close else None,
+                volume=float(tech.volume) if tech.volume else None,
+                open_interest=float(tech.open_interest) if tech.open_interest else None,
+                rsi_14d=float(tech.rsi_14d) if tech.rsi_14d else None,
+                macd=float(tech.macd) if tech.macd else None,
+                stock_us=float(tech.stock_us) if tech.stock_us else None,
+                com_net_us=float(tech.com_net_us) if tech.com_net_us else None,
+            )
+        )
+
+    return ChartDataResponse(data=chart_data)
 
 
 @router.get("/latest-indicator", response_model=IndicatorData)
