@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { PositionStatusResponse, IndicatorsGridResponse, RecommendationsResponse, ChartDataResponse } from '@/types/dashboard';
+import type { PositionStatusResponse, IndicatorsGridResponse, RecommendationsResponse, ChartDataResponse, NewsResponse, WeatherResponse } from '@/types/dashboard';
 
 export const dashboardApi = {
   getPositionStatus: async (targetDate?: string): Promise<PositionStatusResponse> => {
@@ -22,6 +22,18 @@ export const dashboardApi = {
   
   getChartData: async (days: number = 30): Promise<ChartDataResponse> => {
     const response = await apiClient.get('/dashboard/chart-data', { params: { days } });
+    return response.data;
+  },
+  
+  getNews: async (targetDate?: string): Promise<NewsResponse> => {
+    const params = targetDate ? { target_date: targetDate } : {};
+    const response = await apiClient.get('/dashboard/news', { params });
+    return response.data;
+  },
+  
+  getWeather: async (targetDate?: string): Promise<WeatherResponse> => {
+    const params = targetDate ? { target_date: targetDate } : {};
+    const response = await apiClient.get('/dashboard/weather', { params });
     return response.data;
   },
 };

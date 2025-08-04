@@ -11,6 +11,8 @@ from app.core.auth import get_current_user
 from app.models.indicator import Indicator
 from app.models.test_range import TestRange
 from app.models.technicals import Technicals
+from app.models.market_research import MarketResearch
+from app.models.weather_data import WeatherData
 from app.schemas.dashboard import (
     PositionStatusResponse,
     CommodityIndicator,
@@ -18,6 +20,8 @@ from app.schemas.dashboard import (
     IndicatorRange,
     IndicatorsGridResponse,
     RecommendationsResponse,
+    NewsResponse,
+    WeatherResponse,
     ChartDataResponse,
     ChartDataPoint,
 )
@@ -539,3 +543,126 @@ async def get_dashboard_summary(
         "totalCommodities": 1,
         "alerts": [],
     }
+
+
+@router.get("/news", response_model=NewsResponse)
+async def get_news(
+    target_date: Optional[str] = Query(
+        default=None,
+        description="Specific date for news (YYYY-MM-DD format)",
+    ),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> NewsResponse:
+    """
+    Get the latest news from market research table.
+
+    Args:
+        target_date: Optional specific date. If not provided, returns latest data.
+        current_user: Authenticated user
+        db: Database session
+
+    Returns:
+        News data from market research table
+
+    Raises:
+        HTTPException: If no data found
+    """
+    # Build query for latest market research data
+    query = select(MarketResearch).order_by(desc(MarketResearch.date))
+
+    if target_date:
+        try:
+            # Parse the date string to date object
+            parsed_date = datetime.strptime(target_date, "%Y-%m-%d").date()
+
+            # Convert weekend dates to previous Friday (markets are closed on weekends)
+            business_date = get_business_date(parsed_date)
+
+            # Log the conversion if weekend date was requested
+            if business_date != parsed_date:
+                logger.info(
+                    f"Weekend date {parsed_date} converted to business date {business_date}"
+                )
+
+            query = query.where(func.date(MarketResearch.date) == business_date)
+        except ValueError:
+            raise HTTPException(
+                status_code=400, detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+    # Get the most recent market research record
+    result = await db.execute(query)
+    news = result.scalars().first()
+
+    if not news:
+        raise HTTPException(status_code=404, detail="No news data found")
+
+    # Format the response using impact_synthesis as title and summary as content
+    return NewsResponse(
+        date=news.date.strftime("%B %d, %Y"),
+        title=news.impact_synthesis or "Market Research Update",
+        content=news.summary or "No summary available",
+        author=news.author or "Market Research Team",
+    )
+
+
+@router.get("/weather", response_model=WeatherResponse)
+async def get_weather(
+    target_date: Optional[str] = Query(
+        default=None,
+        description="Specific date for weather data (YYYY-MM-DD format)",
+    ),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> WeatherResponse:
+    """
+    Get the latest weather update from weather_data table.
+
+    Args:
+        target_date: Optional specific date. If not provided, returns latest data.
+        current_user: Authenticated user
+        db: Database session
+
+    Returns:
+        Weather data from weather_data table
+
+    Raises:
+        HTTPException: If no data found
+    """
+    # Build query for latest weather data
+    query = select(WeatherData).order_by(desc(WeatherData.date))
+
+    if target_date:
+        try:
+            # Parse the date string to date object
+            parsed_date = datetime.strptime(target_date, "%Y-%m-%d").date()
+
+            # Convert weekend dates to previous Friday (markets are closed on weekends)
+            business_date = get_business_date(parsed_date)
+
+            # Log the conversion if weekend date was requested
+            if business_date != parsed_date:
+                logger.info(
+                    f"Weekend date {parsed_date} converted to business date {business_date}"
+                )
+
+            query = query.where(func.date(WeatherData.date) == business_date)
+        except ValueError:
+            raise HTTPException(
+                status_code=400, detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+    # Get the most recent weather data record
+    result = await db.execute(query)
+    weather = result.scalars().first()
+
+    if not weather:
+        raise HTTPException(status_code=404, detail="No weather data found")
+
+    # Format the response using summary as description and impact_synthesis as impact
+    return WeatherResponse(
+        date=weather.date.strftime("%B %d, %Y"),
+        description=weather.summary or "No weather description available",
+        impact=weather.impact_synthesis or "No market impact assessment available",
+    )

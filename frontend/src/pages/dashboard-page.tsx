@@ -1,17 +1,14 @@
-"use client";
+'use client';
 
-import DateSelector from "@/components/date-selector";
-import IndicatorsGrid from "@/components/indicators-grid";
-import NewsCard from "@/components/news-card";
-import PositionStatus from "@/components/position-status";
-import PriceChart from "@/components/price-chart";
-import RecommendationsList from "@/components/recommendations-list";
-import WeatherUpdateCard from "@/components/weather-update-card";
-import {
-  HISTORICAL_DATA,
-  METRIC_OPTIONS,
-} from "@/data/commodities-data";
-import { useState } from "react";
+import DateSelector from '@/components/date-selector';
+import IndicatorsGrid from '@/components/indicators-grid';
+import NewsCard from '@/components/news-card';
+import PositionStatus from '@/components/position-status';
+import PriceChart from '@/components/price-chart';
+import RecommendationsList from '@/components/recommendations-list';
+import WeatherUpdateCard from '@/components/weather-update-card';
+import { METRIC_OPTIONS } from '@/data/commodities-data';
+import { useState } from 'react';
 
 // Convert date string to ISO format for API
 const convertToISODate = (dateStr: string): string | undefined => {
@@ -24,19 +21,13 @@ const convertToISODate = (dateStr: string): string | undefined => {
 };
 
 export default function DashboardPage() {
-  const today = new Date().toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  const today = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
   });
   const [currentDate, setCurrentDate] = useState(today);
-  const [selectedMetric, setSelectedMetric] = useState("close");
-
-  // Get the data for the selected date
-  const currentData =
-    HISTORICAL_DATA.find((data) => data.date === currentDate) ||
-    HISTORICAL_DATA[0];
-
+  const [selectedMetric, setSelectedMetric] = useState('close');
 
   // Find the selected metric configuration
   const metricConfig =
@@ -54,15 +45,11 @@ export default function DashboardPage() {
         />
       </div>
 
-      <PositionStatus
-        targetDate={convertToISODate(currentDate)}
-      />
+      <PositionStatus targetDate={convertToISODate(currentDate)} />
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-2">
-          <IndicatorsGrid
-            targetDate={convertToISODate(currentDate)}
-          />
+          <IndicatorsGrid targetDate={convertToISODate(currentDate)} />
         </div>
         <div className="lg:col-span-3">
           <RecommendationsList targetDate={convertToISODate(currentDate)} />
@@ -78,9 +65,9 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <NewsCard news={currentData.lastPress} />
+        <NewsCard targetDate={convertToISODate(currentDate)} />
 
-        <WeatherUpdateCard weatherUpdate={currentData.weatherUpdates[0]} />
+        <WeatherUpdateCard targetDate={convertToISODate(currentDate)} />
       </div>
     </div>
   );

@@ -45,3 +45,16 @@ export interface ChartDataPoint {
 export interface ChartDataResponse {
   data: ChartDataPoint[];
 }
+
+export interface NewsResponse {
+  date: string;
+  title: string;
+  content: string;
+  author: string | null;
+}
+
+export interface WeatherResponse {
+  date: string;
+  description: string;
+  impact: string;
+}

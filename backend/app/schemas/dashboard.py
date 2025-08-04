@@ -102,6 +102,33 @@ class RecommendationsResponse(BaseModel):
         json_encoders = {datetime: lambda v: v.isoformat()}
 
 
+class NewsResponse(BaseModel):
+    """
+    Response schema for news endpoint from market research.
+    """
+
+    date: str = Field(..., description="Date of the news article")
+    title: str = Field(..., description="Title from impact_synthesis column")
+    content: str = Field(..., description="Content from summary column")
+    author: Optional[str] = Field(None, description="Author information")
+
+    class Config:
+        json_encoders = {datetime: lambda v: v.isoformat()}
+
+
+class WeatherResponse(BaseModel):
+    """
+    Response schema for weather endpoint from weather data.
+    """
+
+    date: str = Field(..., description="Date of the weather update")
+    description: str = Field(..., description="Weather description from summary column")
+    impact: str = Field(..., description="Market impact from impact_synthesis column")
+
+    class Config:
+        json_encoders = {datetime: lambda v: v.isoformat()}
+
+
 class ChartDataPoint(BaseModel):
     """
     Single data point for chart display.
