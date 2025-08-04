@@ -56,7 +56,6 @@ export default function DashboardPage() {
 
       <PositionStatus
         targetDate={convertToISODate(currentDate)}
-        ytdPerformance={currentData.ytdPerformance}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

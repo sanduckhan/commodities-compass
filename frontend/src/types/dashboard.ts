@@ -15,4 +15,5 @@ export interface CommodityIndicator {
 export interface PositionStatusResponse {
   date: string;
   position: 'OPEN' | 'HEDGE' | 'MONITOR';
+  ytd_performance: number;
 }

@@ -9,7 +9,6 @@ import { usePositionStatus } from '@/hooks/useDashboard';
 
 interface PositionStatusProps {
   targetDate?: string;
-  ytdPerformance?: number;
   className?: string;
   bulletinAudioUrl?: string;
   bulletinTitle?: string;
@@ -17,7 +16,6 @@ interface PositionStatusProps {
 
 export default function PositionStatus({
   targetDate,
-  ytdPerformance = 0, // Default to 0 for now
   className,
   bulletinAudioUrl = '/bulletin-of-the-day.mp3', // Default audio URL
   bulletinTitle = 'Bulletin of the Day',
@@ -27,7 +25,7 @@ export default function PositionStatus({
   const [duration, setDuration] = useState(0);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  
+
   // Fetch position status from API
   const { data, isLoading, error } = usePositionStatus(targetDate);
 
@@ -70,7 +68,9 @@ export default function PositionStatus({
   // Show loading state
   if (isLoading) {
     return (
-      <Card className={cn('flex items-center justify-center h-[180px]', className)}>
+      <Card
+        className={cn('flex items-center justify-center h-[180px]', className)}
+      >
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </Card>
     );
@@ -79,9 +79,13 @@ export default function PositionStatus({
   // Show error state
   if (error || !data) {
     return (
-      <Card className={cn('flex items-center justify-center h-[180px]', className)}>
+      <Card
+        className={cn('flex items-center justify-center h-[180px]', className)}
+      >
         <div className="text-center space-y-2">
-          <p className="text-sm text-muted-foreground">Unable to load position status</p>
+          <p className="text-sm text-muted-foreground">
+            Unable to load position status
+          </p>
           {error && (
             <p className="text-xs text-red-500">
               Error: {error.message || 'Unknown error'}
@@ -93,7 +97,7 @@ export default function PositionStatus({
     );
   }
 
-  const { position } = data;
+  const { position, ytd_performance } = data;
 
   // Get badge styles based on position value
   const getBadgeStyles = () => {
@@ -119,16 +123,12 @@ export default function PositionStatus({
         </CardHeader>
         <CardContent className="flex items-center justify-center py-6 flex-grow">
           <Badge
-            className={cn(
-              'text-xl font-bold px-8 py-3',
-              getBadgeStyles()
-            )}
+            className={cn('text-xl font-bold px-8 py-3', getBadgeStyles())}
           >
             {position}
           </Badge>
         </CardContent>
       </div>
-
 
       {/* Audio Player Section */}
       <div className="flex-1 border-b md:border-b-0 md:border-r border-border flex flex-col justify-between">
@@ -179,6 +179,7 @@ export default function PositionStatus({
         </CardContent>
       </div>
 
+      {/* YTD Performance Section */}
       <div className="flex-1 flex flex-col justify-between">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -186,7 +187,7 @@ export default function PositionStatus({
           </CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-6 flex-grow">
-          <div className="text-3xl font-bold">{ytdPerformance.toFixed(2)}%</div>
+          <div className="text-3xl font-bold">{ytd_performance.toFixed(2)}%</div>
         </CardContent>
       </div>
     </Card>

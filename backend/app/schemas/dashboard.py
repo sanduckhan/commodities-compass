@@ -36,11 +36,14 @@ class PositionStatusResponse(BaseModel):
     """
     Response schema for position status endpoint.
 
-    Contains current trading position.
+    Contains current trading position and YTD performance.
     """
 
     date: datetime = Field(..., description="Date of the current position")
     position: str = Field(..., description="Current position: OPEN, HEDGE, or MONITOR")
+    ytd_performance: float = Field(
+        ..., description="Year-to-date performance percentage"
+    )
 
     class Config:
         json_encoders = {datetime: lambda v: v.isoformat(), Decimal: lambda v: float(v)}

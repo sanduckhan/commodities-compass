@@ -2,13 +2,14 @@ from datetime import datetime, date, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func, extract, and_
 import logging
 
 from app.core.database import get_db
 from app.core.auth import get_current_user
 from app.models.indicator import Indicator
 from app.models.test_range import TestRange
+from app.models.technicals import Technicals
 from app.schemas.dashboard import (
     PositionStatusResponse,
     CommodityIndicator,
@@ -18,6 +19,48 @@ from app.schemas.dashboard import (
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+async def calculate_ytd_performance(
+    db: AsyncSession, reference_date: Optional[date] = None
+) -> float:
+    """
+    Calculate Year-to-Date performance as the mean average of CONCLUSION values.
+
+    Args:
+        db: Database session
+        reference_date: The date to calculate YTD up to (defaults to current date)
+
+    Returns:
+        YTD performance as a percentage
+    """
+    if reference_date is None:
+        reference_date = date.today()
+
+    # Get the year from the reference date
+    year = reference_date.year
+
+    # Query for all CONCLUSION values since the beginning of the year
+    # Only include dates that have a value in CONCLUSION
+    result = await db.execute(
+        select(func.avg(Technicals.conclusion)).where(
+            and_(
+                extract("year", Technicals.timestamp) == year,
+                func.date(Technicals.timestamp) <= reference_date,
+                Technicals.conclusion.isnot(None),
+            )
+        )
+    )
+
+    avg_conclusion = result.scalar()
+
+    # If no data found, return 0
+    if avg_conclusion is None:
+        return 0.0
+
+    # Convert to percentage (assuming CONCLUSION values are already in decimal form)
+    # If CONCLUSION values are like 0.72 for 72%, multiply by 100
+    return float(avg_conclusion) * 100
 
 
 def get_business_date(target_date: date) -> date:
@@ -146,9 +189,13 @@ async def get_position_status(
     if not indicator:
         raise HTTPException(status_code=404, detail="No indicator data found")
 
+    # Calculate YTD performance up to the indicator date
+    ytd_performance = await calculate_ytd_performance(db, indicator.date)
+
     response = PositionStatusResponse(
         date=indicator.date,
         position=indicator.conclusion or "MONITOR",  # Default to MONITOR if None
+        ytd_performance=ytd_performance,
     )
 
     return response
