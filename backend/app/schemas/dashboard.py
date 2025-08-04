@@ -80,3 +80,23 @@ class IndicatorsGridResponse(BaseModel):
 
     class Config:
         json_encoders = {datetime: lambda v: v.isoformat()}
+
+
+class RecommendationsResponse(BaseModel):
+    """
+    Response schema for recommendations endpoint.
+
+    Contains the score text from technicals table.
+    """
+
+    date: datetime = Field(..., description="Date of the recommendations")
+    recommendations: List[str] = Field(
+        default_factory=list,
+        description="List of recommendations parsed from the score column",
+    )
+    raw_score: Optional[str] = Field(
+        None, description="Raw score text from technicals table"
+    )
+
+    class Config:
+        json_encoders = {datetime: lambda v: v.isoformat()}

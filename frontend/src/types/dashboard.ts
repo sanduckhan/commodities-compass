@@ -24,3 +24,9 @@ export interface IndicatorsGridResponse {
     [key: string]: CommodityIndicator;
   };
 }
+
+export interface RecommendationsResponse {
+  date: string;
+  recommendations: string[];
+  raw_score: string | null;
+}

@@ -65,7 +65,7 @@ export default function DashboardPage() {
           />
         </div>
         <div className="lg:col-span-3">
-          <RecommendationsList recommendations={currentData.recommendations} />
+          <RecommendationsList targetDate={convertToISODate(currentDate)} />
         </div>
       </div>
 

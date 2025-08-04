@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func, extract, and_
 import logging
+import re
 
 from app.core.database import get_db
 from app.core.auth import get_current_user
@@ -16,6 +17,7 @@ from app.schemas.dashboard import (
     IndicatorData,
     IndicatorRange,
     IndicatorsGridResponse,
+    RecommendationsResponse,
 )
 
 router = APIRouter()
@@ -288,6 +290,90 @@ async def get_indicators_grid(
             indicators[key].label = label
 
     return IndicatorsGridResponse(date=indicator.date, indicators=indicators)
+
+
+@router.get("/recommendations", response_model=RecommendationsResponse)
+async def get_recommendations(
+    target_date: Optional[str] = Query(
+        default=None,
+        description="Specific date for recommendations (YYYY-MM-DD format)",
+    ),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> RecommendationsResponse:
+    """
+    Get recommendations based on the score from technicals table.
+
+    Args:
+        target_date: Optional specific date. If not provided, returns latest data.
+        current_user: Authenticated user
+        db: Database session
+
+    Returns:
+        Score value from technicals table
+
+    Raises:
+        HTTPException: If no data found
+    """
+    # Build query for latest technicals data
+    query = select(Technicals).order_by(desc(Technicals.timestamp))
+
+    if target_date:
+        try:
+            # Parse the date string to date object
+            parsed_date = datetime.strptime(target_date, "%Y-%m-%d").date()
+
+            # Convert weekend dates to previous Friday (markets are closed on weekends)
+            business_date = get_business_date(parsed_date)
+
+            # Log the conversion if weekend date was requested
+            if business_date != parsed_date:
+                logger.info(
+                    f"Weekend date {parsed_date} converted to business date {business_date}"
+                )
+
+            query = query.where(func.date(Technicals.timestamp) == business_date)
+        except ValueError:
+            raise HTTPException(
+                status_code=400, detail="Invalid date format. Use YYYY-MM-DD format."
+            )
+
+    # Get the most recent technicals record
+    result = await db.execute(query)
+    technical = result.scalars().first()
+
+    if not technical:
+        raise HTTPException(status_code=404, detail="No technical data found")
+
+    # Parse recommendations from the score text
+    recommendations = []
+    if technical.score:
+        # The score column contains bullet points and sections
+        raw_text = technical.score.strip()
+
+        # Split by lines first, then process each line
+        lines = raw_text.split("\n")
+
+        for line in lines:
+            cleaned = line.strip()
+
+            # Skip empty lines and very short fragments
+            if not cleaned or len(cleaned) < 10:
+                continue
+
+            # Remove leading bullet points, tabs, and extra spaces
+            # Handle various bullet point formats: •, -, *, etc.
+            cleaned = re.sub(r"^[\s\t]*[•\-\*]\s*", "", cleaned)
+            cleaned = re.sub(r"^\s+", "", cleaned)  # Remove leading whitespace
+
+            if cleaned and len(cleaned) > 10:  # Only keep substantial content
+                recommendations.append(cleaned)
+
+    return RecommendationsResponse(
+        date=technical.timestamp,
+        recommendations=recommendations,
+        raw_score=technical.score,
+    )
 
 
 @router.get("/latest-indicator", response_model=IndicatorData)
