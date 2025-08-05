@@ -1,6 +1,7 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "frontend/Dockerfile"
+buildArgs = ["AUTH0_DOMAIN", "AUTH0_CLIENT_ID", "AUTH0_API_AUDIENCE", "AUTH0_REDIRECT_URI", "API_BASE_URL", "AUTH0_ISSUER"]
 
 [deploy]
 healthcheckPath = "/"
