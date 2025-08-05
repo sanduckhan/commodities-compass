@@ -155,3 +155,16 @@ class ChartDataResponse(BaseModel):
 
     class Config:
         json_encoders = {datetime: lambda v: v.isoformat()}
+
+
+class AudioResponse(BaseModel):
+    """
+    Response schema for audio endpoint.
+
+    Contains the publicly playable URL and metadata for audio files from Google Drive.
+    """
+
+    url: str = Field(..., description="Publicly accessible URL for the audio file")
+    title: str = Field(..., description="Display title for the audio")
+    date: str = Field(..., description="Date of the audio in ISO format")
+    filename: str = Field(..., description="Original filename of the audio")

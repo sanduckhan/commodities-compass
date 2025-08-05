@@ -137,6 +137,58 @@ All API endpoints are prefixed with `/v1` and include:
 - `/commodities/*` - Commodity information
 - `/historical/*` - Historical data and indicators
 
+## Google Drive Audio Integration
+
+The application integrates with Google Drive to fetch daily audio files for the position status component.
+
+### Audio File Requirements
+
+- **File naming pattern**: `YYYYMMDD-CompassAudio.{wav|m4a}`
+  - Example: `20250109-CompassAudio.wav` or `20250109-CompassAudio.m4a`
+- **Supported formats**: `.wav` and `.m4a` files
+- **Location**: Must be stored in a specific Google Drive folder
+
+### Setting Up Google Drive Integration
+
+1. **Find your Google Drive folder ID**:
+   - Open Google Drive in your browser
+   - Navigate to the folder containing your audio files
+   - Look at the URL in your browser's address bar
+   - The URL will look like: `https://drive.google.com/drive/folders/1A2B3C4D5E6F7G8H9I0J`
+   - Copy the folder ID (the part after `/folders/`) - in this example: `1A2B3C4D5E6F7G8H9I0J`
+
+2. **Configure environment variables**:
+
+   ```bash
+   # Required: Google Drive folder ID containing audio files
+   GOOGLE_DRIVE_AUDIO_FOLDER_ID="1A2B3C4D5E6F7G8H9I0J"
+   
+   # Optional: Separate Google Drive credentials (defaults to Google Sheets credentials)
+   GOOGLE_DRIVE_CREDENTIALS_JSON='{...}'
+   ```
+
+3. **Google Drive API permissions**:
+   - The service account must have read access to the specified folder
+   - Audio files will automatically be made publicly accessible when first accessed
+   - Requires `https://www.googleapis.com/auth/drive.readonly` scope
+
+### API Endpoint
+
+- **GET** `/v1/dashboard/audio`
+- **Query parameters**:
+  - `target_date` (optional): Date in YYYY-MM-DD format
+- **Response**: Audio file URL, title, date, and filename
+- **Error handling**: Returns 404 if audio file not found with helpful error message
+
+### Frontend Integration
+
+The `PositionStatus` component automatically fetches and plays the audio file:
+
+- Loads audio URL dynamically from the API
+- Shows loading state while fetching
+- Displays error messages if file not found
+- Supports both .wav and .m4a formats seamlessly
+
 ## Development Notes
 
 - Backend uses Poetry scripts: `poetry run dev` and `poetry run lint`

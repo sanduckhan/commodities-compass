@@ -20,6 +20,7 @@ from app.schemas.dashboard import (
     NewsResponse,
     WeatherResponse,
     ChartDataResponse,
+    AudioResponse,
 )
 from app.services.dashboard_service import (
     calculate_ytd_performance,
@@ -43,6 +44,7 @@ from app.utils.date_utils import (
     get_business_date,
     log_business_date_conversion,
 )
+from app.services.audio_service import audio_service
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -357,6 +359,73 @@ async def get_weather(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error getting weather data: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/audio", response_model=AudioResponse)
+async def get_audio(
+    target_date: Optional[str] = Query(
+        default=None, description="Specific date for audio file (YYYY-MM-DD format)"
+    ),
+    current_user: dict = Depends(get_current_user),
+) -> AudioResponse:
+    """
+    Get publicly playable audio file link from Google Drive.
+
+    Retrieves the audio file for the specified date in the format
+    YYYYMMDD-CompassAudio.wav and returns a publicly accessible URL.
+
+    Args:
+        target_date: Optional specific date. If not provided, returns today's audio.
+        current_user: Authenticated user
+
+    Returns:
+        Audio file URL and metadata
+
+    Raises:
+        HTTPException: If audio file not found or date format invalid
+    """
+    try:
+        # Parse and validate date if provided
+        parsed_date = None
+        if target_date:
+            parsed_date, _ = _parse_and_validate_date(target_date)
+
+        # Get audio metadata from service
+        audio_metadata = await audio_service.get_audio_metadata(parsed_date)
+
+        if not audio_metadata:
+            # Provide helpful error message
+            date_str = (
+                parsed_date.strftime("%Y-%m-%d")
+                if parsed_date
+                else datetime.now().strftime("%Y-%m-%d")
+            )
+            filename_base = f"{(parsed_date or datetime.now().date()).strftime('%Y%m%d')}-CompassAudio"
+            raise HTTPException(
+                status_code=404,
+                detail=f"Audio file not found for date {date_str}. Looking for: {filename_base}.wav or {filename_base}.m4a",
+            )
+
+        # Return backend streaming URL instead of Google Drive URL
+        # Use relative path that works with frontend's API_BASE_URL
+        stream_url = "/audio/stream"
+        if target_date:
+            stream_url += f"?target_date={target_date}"
+
+        return AudioResponse(
+            url=stream_url,  # Backend streaming URL
+            title=audio_metadata["title"],
+            date=audio_metadata["date"],
+            filename=audio_metadata["filename"],
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting audio file: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

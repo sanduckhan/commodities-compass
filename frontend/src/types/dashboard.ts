@@ -58,3 +58,10 @@ export interface WeatherResponse {
   description: string;
   impact: string;
 }
+
+export interface AudioResponse {
+  url: string;
+  title: string;
+  date: string;
+  filename: string;
+}

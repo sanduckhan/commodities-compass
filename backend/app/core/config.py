@@ -52,6 +52,17 @@ class Settings(BaseSettings):
     )
     SPREADSHEET_ID: str = config("SPREADSHEET_ID")
 
+    # Google Drive
+    GOOGLE_DRIVE_CREDENTIALS_JSON: str = config(
+        "GOOGLE_DRIVE_CREDENTIALS_JSON",
+        default=config(
+            "GOOGLE_SHEETS_CREDENTIALS_JSON", default=""
+        ),  # Fallback to sheets credentials
+    )
+    GOOGLE_DRIVE_AUDIO_FOLDER_ID: str = config(
+        "GOOGLE_DRIVE_AUDIO_FOLDER_ID"
+    )  # Required for audio functionality
+
     # External APIs
     WEATHER_API_KEY: str = config("WEATHER_API_KEY", default="")
     NEWS_API_KEY: str = config("NEWS_API_KEY", default="")

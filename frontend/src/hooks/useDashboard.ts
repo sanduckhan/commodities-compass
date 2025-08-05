@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi, PositionStatusResponse } from '@/api/dashboard';
-import type { IndicatorsGridResponse, RecommendationsResponse, ChartDataResponse, NewsResponse, WeatherResponse } from '@/types/dashboard';
+import type { IndicatorsGridResponse, RecommendationsResponse, ChartDataResponse, NewsResponse, WeatherResponse, AudioResponse } from '@/types/dashboard';
 
 export const usePositionStatus = (targetDate?: string) => {
   return useQuery<PositionStatusResponse>({
@@ -61,6 +61,17 @@ export const useWeather = (targetDate?: string) => {
   return useQuery<WeatherResponse>({
     queryKey: ['weather', targetDate],
     queryFn: () => dashboardApi.getWeather(targetDate),
+    staleTime: 24 * 60 * 60 * 1000, // Consider data fresh for 24 hours
+    refetchInterval: false, // No automatic refetching
+    refetchOnWindowFocus: false, // Don't refetch when window regains focus
+    refetchOnMount: false, // Don't refetch when component mounts if data exists
+  });
+};
+
+export const useAudio = (targetDate?: string) => {
+  return useQuery<AudioResponse>({
+    queryKey: ['audio', targetDate],
+    queryFn: () => dashboardApi.getAudio(targetDate),
     staleTime: 24 * 60 * 60 * 1000, // Consider data fresh for 24 hours
     refetchInterval: false, // No automatic refetching
     refetchOnWindowFocus: false, // Don't refetch when window regains focus

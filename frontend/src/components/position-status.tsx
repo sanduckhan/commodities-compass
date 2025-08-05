@@ -4,21 +4,17 @@ import { cn } from '@/utils';
 import { PlayIcon, PauseIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { useState, useRef } from 'react';
-import { usePositionStatus } from '@/hooks/useDashboard';
+import { usePositionStatus, useAudio } from '@/hooks/useDashboard';
+import { useRef, useEffect, useState } from 'react';
 
 interface PositionStatusProps {
   targetDate?: string;
   className?: string;
-  bulletinAudioUrl?: string;
-  bulletinTitle?: string;
 }
 
 export default function PositionStatus({
   targetDate,
   className,
-  bulletinAudioUrl = '/bulletin-of-the-day.mp3', // Default audio URL
-  bulletinTitle = 'Bulletin of the Day',
 }: PositionStatusProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -29,12 +25,59 @@ export default function PositionStatus({
   // Fetch position status from API
   const { data, isLoading, error } = usePositionStatus(targetDate);
 
+  // Fetch audio URL from API
+  const {
+    data: audioData,
+    isLoading: audioLoading,
+    error: audioError,
+  } = useAudio(targetDate);
+
+  // Set up audio source when data is available
+  const setupAudioSource = () => {
+    if (audioRef.current && audioData?.url) {
+      // Convert relative URL to absolute URL using API base
+      // @ts-expect-error - API_BASE_URL is available at runtime from .env
+      const apiBaseUrl = import.meta.env.API_BASE_URL || '';
+      const absoluteUrl = audioData.url.startsWith('/')
+        ? `${apiBaseUrl}${audioData.url}`
+        : audioData.url;
+      audioRef.current.src = absoluteUrl;
+      audioRef.current.load(); // Reload the audio element with new source
+      // Reset playing state when source changes
+      setIsPlaying(false);
+      setCurrentTime(0);
+      if (audioRef.current.duration) {
+        setDuration(audioRef.current.duration);
+      }
+      return true;
+    }
+    return false;
+  };
+
+  // Update audio source when new audio data is fetched
+  useEffect(() => {
+    setupAudioSource();
+  }, [audioData]);
+
+  // Also setup when ref becomes available (after render)
+  useEffect(() => {
+    if (audioData?.url) {
+      // Small delay to ensure ref is mounted
+      const timer = setTimeout(() => {
+        setupAudioSource();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [audioData?.url]);
+
   const togglePlayPause = () => {
     if (audioRef.current) {
       if (isPlaying) {
         audioRef.current.pause();
       } else {
-        audioRef.current.play();
+        audioRef.current.play().catch(error => {
+          console.error('Audio play failed:', error);
+        });
       }
       setIsPlaying(!isPlaying);
     }
@@ -134,14 +177,13 @@ export default function PositionStatus({
       <div className="flex-1 border-b md:border-b-0 md:border-r border-border flex flex-col justify-between">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            {bulletinTitle}
+            {audioData?.title || 'Compass Bulletin'}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex items-center py-4 flex-grow">
           <div className="w-full space-y-4">
             <audio
               ref={audioRef}
-              src={bulletinAudioUrl}
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
               onEnded={() => setIsPlaying(false)}
@@ -153,8 +195,11 @@ export default function PositionStatus({
                 size="icon"
                 className="h-10 w-10 flex-shrink-0"
                 onClick={togglePlayPause}
+                disabled={audioLoading || !audioData?.url}
               >
-                {isPlaying ? (
+                {audioLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : isPlaying ? (
                   <PauseIcon className="h-5 w-5" />
                 ) : (
                   <PlayIcon className="h-5 w-5" />
@@ -172,9 +217,20 @@ export default function PositionStatus({
               </div>
 
               <span className="text-sm text-gray-500 dark:text-gray-400 min-w-[80px] text-right flex-shrink-0">
-                {formatTime(currentTime)} / {formatTime(duration)}
+                {audioError ? (
+                  <span className="text-red-500">Error</span>
+                ) : audioLoading ? (
+                  'Loading...'
+                ) : (
+                  `${formatTime(currentTime)} / ${formatTime(duration)}`
+                )}
               </span>
             </div>
+            {audioError && (
+              <p className="text-xs text-red-500 mt-2">
+                Unable to load audio: {audioError.message || 'File not found'}
+              </p>
+            )}
           </div>
         </CardContent>
       </div>
@@ -187,7 +243,9 @@ export default function PositionStatus({
           </CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-6 flex-grow">
-          <div className="text-3xl font-bold">{ytd_performance.toFixed(2)}%</div>
+          <div className="text-3xl font-bold">
+            {ytd_performance.toFixed(2)}%
+          </div>
         </CardContent>
       </div>
     </Card>
