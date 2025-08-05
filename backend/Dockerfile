@@ -20,22 +20,15 @@ WORKDIR /app
 # Copy poetry files
 COPY pyproject.toml poetry.lock ./
 
-# Install dependencies
-RUN poetry install --only=main --no-root
+# Install dependencies (without creating virtualenv)
+RUN poetry config virtualenvs.create false && \
+    poetry install --only=main --no-root
 
 # Copy application code
 COPY . .
 
-# Add .venv/bin to PATH
-ENV PATH="/app/.venv/bin:$PATH"
-
 # Expose port
 EXPOSE 8000
 
-# Create a startup script
-RUN echo '#!/bin/sh\n\
-exec /app/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}' > /app/start.sh && \
-    chmod +x /app/start.sh
-
-# Command to run the application
-CMD ["/app/start.sh"]
+# Use Python directly since we installed globally
+CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
