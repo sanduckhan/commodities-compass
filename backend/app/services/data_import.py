@@ -6,6 +6,7 @@ into the PostgreSQL database using the defined SQLAlchemy models.
 """
 
 import pandas as pd
+import json
 from datetime import datetime
 from decimal import Decimal
 from typing import Dict, Optional, Any
@@ -111,9 +112,9 @@ class DataTransforms:
 class GoogleSheetsDataImporter:
     """Service for importing Google Sheets data into PostgreSQL."""
 
-    def __init__(self, spreadsheet_id: str, credentials_path: str):
+    def __init__(self, spreadsheet_id: str, credentials_json: str):
         self.spreadsheet_id = spreadsheet_id
-        self.credentials_path = credentials_path
+        self.credentials_json = credentials_json
         self.transforms = DataTransforms()
         self.service = None
 
@@ -121,8 +122,9 @@ class GoogleSheetsDataImporter:
         """Initialize Google Sheets service with authentication."""
         if self.service is None:
             scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-            credentials = Credentials.from_service_account_file(
-                self.credentials_path, scopes=scopes
+            credentials_dict = json.loads(self.credentials_json)
+            credentials = Credentials.from_service_account_info(
+                credentials_dict, scopes=scopes
             )
             self.service = build("sheets", "v4", credentials=credentials)
         return self.service
@@ -324,7 +326,7 @@ class GoogleSheetsDataImporter:
 # CLI function for running the import
 async def run_google_sheets_import(
     spreadsheet_id: str = None,
-    credentials_path: str = None,
+    credentials_json: str = None,
 ):
     """Run the Google Sheets import process."""
     print("Starting Google Sheets to PostgreSQL import...")
@@ -333,11 +335,11 @@ async def run_google_sheets_import(
     if spreadsheet_id is None:
         spreadsheet_id = settings.SPREADSHEET_ID
 
-    if credentials_path is None:
-        credentials_path = settings.GOOGLE_SHEETS_CREDENTIALS_PATH
+    if credentials_json is None:
+        credentials_json = settings.GOOGLE_SHEETS_CREDENTIALS_JSON
 
     # Initialize importer
-    importer = GoogleSheetsDataImporter(spreadsheet_id, credentials_path)
+    importer = GoogleSheetsDataImporter(spreadsheet_id, credentials_json)
 
     # Get database session
     async with AsyncSessionLocal() as session:

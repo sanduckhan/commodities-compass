@@ -47,8 +47,8 @@ class Settings(BaseSettings):
     REDIS_URL: str = config("REDIS_URL", default="redis://localhost:6379/0")
 
     # Google Sheets
-    GOOGLE_SHEETS_CREDENTIALS_PATH: str = config(
-        "GOOGLE_SHEETS_CREDENTIALS_PATH", default=""
+    GOOGLE_SHEETS_CREDENTIALS_JSON: str = config(
+        "GOOGLE_SHEETS_CREDENTIALS_JSON", default=""
     )
     SPREADSHEET_ID: str = config("SPREADSHEET_ID")
 
