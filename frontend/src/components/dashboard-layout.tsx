@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Link } from 'react-router-dom';
+import logo from '@/assets/logo-small-transparent-no-name.png';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -64,20 +65,27 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           )}
         >
           {/* Logo and App Name */}
-          <div className="flex items-center p-4 border-b">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary flex-shrink-0">
-              <span className="text-lg font-bold text-primary-foreground">
-                C
-              </span>
+          <div className="flex items-center justify-center p-4 border-b">
+            <div className="flex flex-col items-center">
+              <img
+                src={logo}
+                alt="Commodities Compass Logo"
+                className={cn(
+                  'object-contain',
+                  sidebarCollapsed ? 'h-12 w-12' : 'h-24 w-24 mb-3'
+                )}
+              />
+              {!sidebarCollapsed && (
+                <div className="flex flex-col text-center">
+                  <span className="font-bold text-2xl leading-tight">
+                    Commodities
+                  </span>
+                  <span className="font-bold text-2xl leading-tight">
+                    Compass
+                  </span>
+                </div>
+              )}
             </div>
-            {!sidebarCollapsed && (
-              <div className="ml-3 flex flex-col">
-                <span className="font-bold text-lg leading-tight">
-                  Commodities
-                </span>
-                <span className="font-bold text-lg leading-tight">Compass</span>
-              </div>
-            )}
           </div>
 
           {/* Navigation */}

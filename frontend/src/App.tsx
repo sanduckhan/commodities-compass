@@ -37,6 +37,9 @@ export default function App() {
           localStorage.setItem('auth0_token', token);
         } catch (error) {
           console.error('Error getting access token:', error);
+          // If we can't get a token, clear the stored one and redirect to login
+          localStorage.removeItem('auth0_token');
+          window.location.href = '/login';
         }
       }
     };

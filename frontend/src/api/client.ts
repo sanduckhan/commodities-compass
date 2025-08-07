@@ -28,7 +28,9 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid - redirect to login
+      // Token expired or invalid - clear auth state and redirect to login
+      localStorage.removeItem('auth0_token');
+      // Force a hard reload to clear Auth0's cached state
       window.location.href = '/login';
     }
     return Promise.reject(error);
