@@ -24,7 +24,7 @@ from app.schemas.dashboard import (
 )
 from app.services.dashboard_service import (
     calculate_ytd_performance,
-    get_position_from_indicator,
+    get_position_from_technicals,
     get_indicators_with_ranges,
     get_latest_recommendations,
     get_chart_data,
@@ -104,7 +104,7 @@ async def get_position_status(
             _, business_date = _parse_and_validate_date(target_date)
 
         # Get position and YTD performance from service layer
-        position = await get_position_from_indicator(db, business_date)
+        position = await get_position_from_technicals(db, business_date)
         ytd_performance = await calculate_ytd_performance(db, business_date)
 
         # Use business_date for response, or current date if not provided

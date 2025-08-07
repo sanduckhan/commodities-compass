@@ -310,31 +310,31 @@ async def get_latest_weather_data(
     return result.scalars().first()
 
 
-async def get_position_from_indicator(
+async def get_position_from_technicals(
     db: AsyncSession, target_date: Optional[date] = None
 ) -> Optional[str]:
     """
-    Get the position of the day from indicator data.
+    Get the position of the day from technicals decision data.
 
     Args:
         db: Database session
         target_date: Target date (defaults to latest available)
 
     Returns:
-        Position string ("OPEN", "HEDGE", "MONITOR") or None
+        Position string from decision column ("OPEN", "HEDGE", "MONITOR") or None
     """
-    # Get the latest indicator data
-    query = select(Indicator).order_by(desc(Indicator.date))
+    # Get the latest technicals data
+    query = select(Technicals).order_by(desc(Technicals.timestamp))
 
     if target_date:
         business_date = get_business_date(target_date)
-        query = query.where(func.date(Indicator.date) == business_date)
+        query = query.where(func.date(Technicals.timestamp) == business_date)
 
     result = await db.execute(query)
-    indicator = result.scalars().first()
+    technicals = result.scalars().first()
 
-    if not indicator:
+    if not technicals:
         return None
 
-    # Return conclusion directly as position (matches original implementation)
-    return indicator.conclusion or "MONITOR"
+    # Return decision directly as position
+    return technicals.decision

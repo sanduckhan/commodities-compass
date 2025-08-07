@@ -10,14 +10,35 @@ import WeatherUpdateCard from '@/components/weather-update-card';
 import { METRIC_OPTIONS } from '@/data/commodities-data';
 import { useState } from 'react';
 
+// Convert date to ISO format (YYYY-MM-DD) preserving local timezone
+const dateToISOString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // Convert date string to ISO format for API
-const convertToISODate = (dateStr: string): string | undefined => {
+const convertToISODate = (dateStr: string, dayOffset: number = 0): string | undefined => {
   try {
     const date = new Date(dateStr);
-    return date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    if (dayOffset !== 0) {
+      date.setDate(date.getDate() + dayOffset);
+    }
+    return dateToISOString(date);
   } catch {
     return undefined;
   }
+};
+
+// Get yesterday's date in ISO format
+const getYesterdayDate = (dateStr: string): string | undefined => {
+  return convertToISODate(dateStr, -1);
+};
+
+// Get today's date in ISO format (no offset)
+const getTodayDate = (dateStr: string): string | undefined => {
+  return convertToISODate(dateStr, 0);
 };
 
 export default function DashboardPage() {
@@ -45,14 +66,17 @@ export default function DashboardPage() {
         />
       </div>
 
-      <PositionStatus targetDate={convertToISODate(currentDate)} />
+      <PositionStatus 
+        targetDate={getYesterdayDate(currentDate)} 
+        audioDate={getTodayDate(currentDate)} 
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-2">
-          <IndicatorsGrid targetDate={convertToISODate(currentDate)} />
+          <IndicatorsGrid targetDate={getYesterdayDate(currentDate)} />
         </div>
         <div className="lg:col-span-3">
-          <RecommendationsList targetDate={convertToISODate(currentDate)} />
+          <RecommendationsList targetDate={getYesterdayDate(currentDate)} />
         </div>
       </div>
 
@@ -65,9 +89,9 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <NewsCard targetDate={convertToISODate(currentDate)} />
+        <NewsCard targetDate={getYesterdayDate(currentDate)} />
 
-        <WeatherUpdateCard targetDate={convertToISODate(currentDate)} />
+        <WeatherUpdateCard targetDate={getYesterdayDate(currentDate)} />
       </div>
     </div>
   );

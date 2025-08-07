@@ -9,11 +9,13 @@ import { useRef, useEffect, useState } from 'react';
 
 interface PositionStatusProps {
   targetDate?: string;
+  audioDate?: string;
   className?: string;
 }
 
 export default function PositionStatus({
   targetDate,
+  audioDate,
   className,
 }: PositionStatusProps) {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -22,15 +24,15 @@ export default function PositionStatus({
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Fetch position status from API
+  // Fetch position status from API (using targetDate which is yesterday's date)
   const { data, isLoading, error } = usePositionStatus(targetDate);
 
-  // Fetch audio URL from API
+  // Fetch audio URL from API - use audioDate which is today's date
   const {
     data: audioData,
     isLoading: audioLoading,
     error: audioError,
-  } = useAudio(targetDate);
+  } = useAudio(audioDate);
 
   // Set up audio source when data is available
   const setupAudioSource = () => {
@@ -57,6 +59,7 @@ export default function PositionStatus({
   // Update audio source when new audio data is fetched
   useEffect(() => {
     setupAudioSource();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioData]);
 
   // Also setup when ref becomes available (after render)
@@ -68,6 +71,7 @@ export default function PositionStatus({
       }, 100);
       return () => clearTimeout(timer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioData?.url]);
 
   const togglePlayPause = () => {
@@ -75,7 +79,7 @@ export default function PositionStatus({
       if (isPlaying) {
         audioRef.current.pause();
       } else {
-        audioRef.current.play().catch(error => {
+        audioRef.current.play().catch((error) => {
           console.error('Audio play failed:', error);
         });
       }
