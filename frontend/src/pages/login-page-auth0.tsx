@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { ShieldCheckIcon } from 'lucide-react';
-import fullLogo from '@/assets/logo_big.png';
+import fullLogo from '@/assets/COMPASS-logo.svg';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -51,15 +51,14 @@ export default function LoginPage() {
             alt="Commodities Compass"
             className="h-64 w-auto object-contain mx-auto mb-6"
           />
-          <p className="text-lg text-gray-600 dark:text-gray-400">
-            Professional market insights for commodity traders
-          </p>
         </div>
 
         {/* Login Card */}
         <Card className="shadow-xl border-0">
           <CardHeader className="space-y-1 pb-6">
-            <CardTitle className="text-2xl text-center">Sign in to your account</CardTitle>
+            <CardTitle className="text-2xl text-center">
+              Sign in to your account
+            </CardTitle>
             <CardDescription className="text-center">
               Use your organization credentials to access your dashboard
             </CardDescription>
@@ -89,17 +88,29 @@ export default function LoginPage() {
             <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4">
               <p className="text-sm text-center text-gray-600 dark:text-gray-400">
                 <span className="inline-flex items-center gap-1">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
                   </svg>
-                  Your credentials are protected with enterprise-grade encryption
+                  Your credentials are protected with enterprise-grade
+                  encryption
                 </span>
               </p>
             </div>
           </CardContent>
           <CardFooter className="pt-4">
             <p className="text-xs text-center text-muted-foreground w-full">
-              By signing in, you agree to our Terms of Service and Privacy Policy
+              By signing in, you agree to our Terms of Service and Privacy
+              Policy
             </p>
           </CardFooter>
         </Card>

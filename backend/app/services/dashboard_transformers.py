@@ -267,6 +267,6 @@ def transform_weather_data_to_response(weather_data: WeatherData) -> WeatherResp
     """
     return WeatherResponse(
         date=format_date_for_display(weather_data.date),
-        description=weather_data.summary or "No weather description available",
+        description=weather_data.text or "No weather description available",
         impact=weather_data.impact_synthesis or "No market impact assessment available",
     )

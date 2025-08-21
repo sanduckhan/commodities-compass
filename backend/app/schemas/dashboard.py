@@ -122,7 +122,7 @@ class WeatherResponse(BaseModel):
     """
 
     date: str = Field(..., description="Date of the weather update")
-    description: str = Field(..., description="Weather description from summary column")
+    description: str = Field(..., description="Weather description from text column")
     impact: str = Field(..., description="Market impact from impact_synthesis column")
 
     class Config:
