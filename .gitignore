@@ -98,3 +98,6 @@ google-sheets-credentials.json
 # Temporary files
 *.tmp
 *.temp
+
+# mcp files
+.playwright-mcp
