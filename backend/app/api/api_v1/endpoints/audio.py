@@ -64,7 +64,7 @@ async def stream_audio(
             filename_base = f"{(parsed_date or datetime.now().date()).strftime('%Y%m%d')}-CompassAudio"
             raise HTTPException(
                 status_code=404,
-                detail=f"Audio file not found for date {date_str}. Looking for: {filename_base}.wav or {filename_base}.m4a",
+                detail=f"Audio file not found for date {date_str}. Looking for: {filename_base}.wav, {filename_base}.m4a, or {filename_base}.mp4",
             )
 
         # The audio service should already return the correct download URL
@@ -116,6 +116,8 @@ async def stream_audio(
                 if filename.endswith(".wav"):
                     content_type = "audio/wav"
                 elif filename.endswith(".m4a"):
+                    content_type = "audio/mp4"
+                elif filename.endswith(".mp4"):
                     content_type = "audio/mp4"
                 else:
                     content_type = "audio/mpeg"  # fallback
@@ -205,7 +207,7 @@ async def get_audio_info(
             filename_base = f"{(parsed_date or datetime.now().date()).strftime('%Y%m%d')}-CompassAudio"
             raise HTTPException(
                 status_code=404,
-                detail=f"Audio file not found for date {date_str}. Looking for: {filename_base}.wav or {filename_base}.m4a",
+                detail=f"Audio file not found for date {date_str}. Looking for: {filename_base}.wav, {filename_base}.m4a, or {filename_base}.mp4",
             )
 
         # Replace the Google Drive URL with our backend streaming URL

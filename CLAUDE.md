@@ -143,9 +143,9 @@ The application integrates with Google Drive to fetch daily audio files for the 
 
 ### Audio File Requirements
 
-- **File naming pattern**: `YYYYMMDD-CompassAudio.{wav|m4a}`
-  - Example: `20250109-CompassAudio.wav` or `20250109-CompassAudio.m4a`
-- **Supported formats**: `.wav` and `.m4a` files
+- **File naming pattern**: `YYYYMMDD-CompassAudio.{wav|m4a|mp4}`
+  - Example: `20250109-CompassAudio.wav`, `20250109-CompassAudio.m4a`, or `20250109-CompassAudio.mp4`
+- **Supported formats**: `.wav`, `.m4a`, and `.mp4` files
 - **Location**: Must be stored in a specific Google Drive folder
 
 ### Setting Up Google Drive Integration
@@ -187,7 +187,7 @@ The `PositionStatus` component automatically fetches and plays the audio file:
 - Loads audio URL dynamically from the API
 - Shows loading state while fetching
 - Displays error messages if file not found
-- Supports both .wav and .m4a formats seamlessly
+- Supports .wav, .m4a, and .mp4 formats seamlessly
 
 ## Development Notes
 

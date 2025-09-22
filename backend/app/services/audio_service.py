@@ -123,11 +123,11 @@ class AudioService:
         filename_base = f"{business_date.strftime('%Y%m%d')}-CompassAudio"
 
         try:
-            # Search for both .wav and .m4a files in Google Drive
-            # Note: Google Drive uses 'audio/x-wav' and 'audio/x-m4a' MIME types
+            # Search for .wav, .m4a, and .mp4 files in Google Drive
+            # Note: Google Drive uses various MIME types for audio files
             query = (
-                f"(name='{filename_base}.wav' or name='{filename_base}.m4a') and "
-                f"(mimeType='audio/wav' or mimeType='audio/x-wav' or mimeType='audio/x-m4a' or mimeType='audio/mp4' or mimeType='audio/mpeg') and "
+                f"(name='{filename_base}.wav' or name='{filename_base}.m4a' or name='{filename_base}.mp4') and "
+                f"(mimeType='audio/wav' or mimeType='audio/x-wav' or mimeType='audio/x-m4a' or mimeType='audio/mp4' or mimeType='audio/mpeg' or mimeType='video/mp4') and "
                 f"trashed=false and "
                 f"'{settings.GOOGLE_DRIVE_AUDIO_FOLDER_ID}' in parents"
             )
@@ -164,7 +164,7 @@ class AudioService:
 
             if not files:
                 logger.warning(
-                    f"Audio file not found: {filename_base}.wav or {filename_base}.m4a"
+                    f"Audio file not found: {filename_base}.wav, {filename_base}.m4a, or {filename_base}.mp4"
                 )
                 return None
 
